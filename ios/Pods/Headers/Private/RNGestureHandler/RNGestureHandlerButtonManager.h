@@ -1,5 +1,1 @@
-#import <React/RCTViewManager.h>
-
-@interface RNGestureHandlerButtonManager : RCTViewManager
-
-@end
+../../../../../node_modules/react-native-gesture-handler/apple/RNGestureHandlerButtonManager.h

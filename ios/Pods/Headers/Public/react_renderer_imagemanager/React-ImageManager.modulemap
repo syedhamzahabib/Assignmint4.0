@@ -1,6 +1,1 @@
-module react_renderer_imagemanager {
-  umbrella header "React-ImageManager-umbrella.h"
-
-  export *
-  module * { export * }
-}
+../../../Target Support Files/React-ImageManager/React-ImageManager.modulemap

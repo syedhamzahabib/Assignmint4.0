@@ -178,7 +178,7 @@ const PostTaskScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>⚠️ Error Loading Step</Text>
           <Text style={styles.errorText}>Step {currentStep} failed to load</Text>
-          <Text style={styles.errorDetails}>{error.toString()}</Text>
+          <Text style={styles.errorDetails}>{String(error)}</Text>
           <TouchableOpacity
             style={styles.errorButton}
             onPress={() => setCurrentStep(1)}

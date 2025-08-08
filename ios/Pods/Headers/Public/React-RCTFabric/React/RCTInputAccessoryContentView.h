@@ -1,12 +1,1 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
-#import <UIKit/UIKit.h>
-
-@interface RCTInputAccessoryContentView : UIView
-
-@end
+../../../../../../node_modules/react-native/React/Fabric/Mounting/ComponentViews/InputAccessory/RCTInputAccessoryContentView.h

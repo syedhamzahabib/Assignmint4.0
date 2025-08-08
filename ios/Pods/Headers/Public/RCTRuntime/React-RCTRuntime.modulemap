@@ -1,6 +1,1 @@
-module RCTRuntime {
-  umbrella header "React-RCTRuntime-umbrella.h"
-
-  export *
-  module * { export * }
-}
+../../../Target Support Files/React-RCTRuntime/React-RCTRuntime.modulemap

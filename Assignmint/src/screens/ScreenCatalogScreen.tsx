@@ -92,7 +92,7 @@ const ScreenCatalogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Text style={styles.screenName}>{screen.name}</Text>
         <Text style={styles.screenDescription}>{screen.description}</Text>
       </View>
-      <Icon name={Icons.arrowForward} size={20} color={COLORS.textSecondary} />
+      <Icon name={Icons['arrow-forward']} size={20} color={COLORS.textSecondary} />
     </TouchableOpacity>
   );
 
@@ -110,7 +110,7 @@ const ScreenCatalogScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 

@@ -51,13 +51,20 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
 
     analytics.track(ANALYTICS_EVENTS.SIGN_UP_START, { email });
 
-    const result = await signUp(email, password);
-    
-    if (result.success) {
+    try {
+      // Mock user for now - in real app, this would be an API call
+      const mockUser = {
+        id: 'user-123',
+        email,
+        name: 'Test User',
+        hasPaymentMethod: false,
+      };
+      
+      signUp(mockUser);
       analytics.track(ANALYTICS_EVENTS.SIGN_UP_COMPLETE, { email });
       navigation.navigate('SignUpPayment');
-    } else {
-      Alert.alert('Error', result.error || 'Sign up failed');
+    } catch (error) {
+      Alert.alert('Error', 'Sign up failed. Please try again.');
     }
   };
 

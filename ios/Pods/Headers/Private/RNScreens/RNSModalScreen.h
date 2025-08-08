@@ -1,8 +1,1 @@
-#import "RNSScreen.h"
-
-@interface RNSModalScreen : RNSScreenView
-@end
-
-@interface RNSModalScreenManager : RNSScreenManager
-
-@end
+../../../../../node_modules/react-native-screens/ios/RNSModalScreen.h

@@ -1,6 +1,1 @@
-module React_Fabric {
-  umbrella header "React-Fabric-umbrella.h"
-
-  export *
-  module * { export * }
-}
+../../../Target Support Files/React-Fabric/React-Fabric.modulemap

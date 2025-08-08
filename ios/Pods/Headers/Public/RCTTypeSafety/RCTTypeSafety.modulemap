@@ -1,6 +1,1 @@
-module RCTTypeSafety {
-  umbrella header "RCTTypeSafety-umbrella.h"
-
-  export *
-  module * { export * }
-}
+../../../Target Support Files/RCTTypeSafety/RCTTypeSafety.modulemap

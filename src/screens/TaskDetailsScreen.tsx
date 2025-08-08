@@ -122,7 +122,7 @@ const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 

@@ -3,48 +3,34 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS } from '../constants';
 import { useAuthStore } from '../services/AuthStore';
+import { MainTabsParamList } from '../types/navigation';
+import { ROUTES } from '../types/navigation';
 
-// Import screens
-import HomeScreen from '../screens/HomeScreen';
-import PostTaskScreen from '../screens/PostTaskScreen';
-import PostTeaserScreen from '../screens/PostTeaserScreen';
-import MyTasksScreen from '../screens/MyTasksScreen';
-import AIAssistantScreen from '../screens/AIAssistantScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+// Import stack navigators
+import HomeStack from './stacks/HomeStack';
+import PostStack from './stacks/PostStack';
+import MyTasksStack from './stacks/MyTasksStack';
+import NotificationsStack from './stacks/NotificationsStack';
+import ProfileStack from './stacks/ProfileStack';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<MainTabsParamList>();
 
 // Centralized tab icon configuration
 const TAB_ICON: Record<string, { focused: any; default: any }> = {
-  Home: { focused: 'home', default: 'home-outline' },
-  Post: { focused: 'add-circle', default: 'add-circle-outline' },
-  MyTasks: { focused: 'briefcase', default: 'briefcase-outline' },
-  Chat: { focused: 'chatbubble', default: 'chatbubble-outline' },
-  Profile: { focused: 'person', default: 'person-outline' },
-};
-
-// Conditional Post Screen Component
-const PostScreenWrapper = ({ navigation }: { navigation: any }) => {
-  const { user, mode } = useAuthStore();
-  
-  // Show PostTeaserScreen for guests, PostTaskScreen for users
-  if (user || mode === 'user') {
-    return <PostTaskScreen navigation={navigation} />;
-  } else {
-    return <PostTeaserScreen navigation={navigation} />;
-  }
-};
-
-// Create a proper component for the Post tab
-const PostTabScreen = ({ navigation }: { navigation: any }) => {
-  return <PostScreenWrapper navigation={navigation} />;
+  HomeStack: { focused: 'home', default: 'home-outline' },
+  PostStack: { focused: 'add-circle', default: 'add-circle-outline' },
+  MyTasksStack: { focused: 'briefcase', default: 'briefcase-outline' },
+  NotificationsStack: { focused: 'notifications', default: 'notifications-outline' },
+  ProfileStack: { focused: 'person', default: 'person-outline' },
 };
 
 export function AppTabs() {
+  const { user, mode } = useAuthStore();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerShown: false,
+        headerShown: false, // Hide headers as they're handled by stack navigators
         tabBarShowLabel: true,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textSecondary,
@@ -72,36 +58,36 @@ export function AppTabs() {
       })}
     >
       <Tab.Screen 
-        name="Home" 
-        component={HomeScreen}
+        name="HomeStack" 
+        component={HomeStack}
         options={{
           tabBarLabel: 'Home',
         }}
       />
       <Tab.Screen 
-        name="Post" 
-        component={PostTabScreen}
+        name="PostStack" 
+        component={PostStack}
         options={{
           tabBarLabel: 'Post',
         }}
       />
       <Tab.Screen 
-        name="MyTasks" 
-        component={MyTasksScreen}
+        name="MyTasksStack" 
+        component={MyTasksStack}
         options={{
           tabBarLabel: 'My Tasks',
         }}
       />
       <Tab.Screen 
-        name="Chat" 
-        component={AIAssistantScreen}
+        name="NotificationsStack" 
+        component={NotificationsStack}
         options={{
-          tabBarLabel: 'Chat',
+          tabBarLabel: 'Notifications',
         }}
       />
       <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
+        name="ProfileStack" 
+        component={ProfileStack}
         options={{
           tabBarLabel: 'Profile',
         }}

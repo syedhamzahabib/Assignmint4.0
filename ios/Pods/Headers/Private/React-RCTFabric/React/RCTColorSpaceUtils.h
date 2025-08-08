@@ -1,16 +1,1 @@
-/*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
-#pragma once
-
-#import <React/RCTConvert.h>
-
-@interface RCTColorSpaceUtils : NSObject
-
-+ (void)applyDefaultColorSpace:(RCTColorSpace)colorSpace;
-
-@end
+../../../../../../node_modules/react-native/React/Fabric/Utils/RCTColorSpaceUtils.h

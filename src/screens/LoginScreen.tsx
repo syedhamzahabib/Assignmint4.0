@@ -39,13 +39,20 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     analytics.track(ANALYTICS_EVENTS.SIGN_IN_START, { email });
 
-    const result = await signIn(email, password);
-    
-    if (result.success) {
+    try {
+      // Mock user for now - in real app, this would be an API call
+      const mockUser = {
+        id: 'user-123',
+        email,
+        name: 'Test User',
+        hasPaymentMethod: false,
+      };
+      
+      signIn(mockUser);
       analytics.track(ANALYTICS_EVENTS.SIGN_IN_COMPLETE, { email });
       navigation.navigate('MainTabs');
-    } else {
-      Alert.alert('Error', result.error || 'Sign in failed');
+    } catch (error) {
+      Alert.alert('Error', 'Sign in failed. Please try again.');
     }
   };
 

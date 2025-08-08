@@ -26,6 +26,9 @@ import LoadingScreen, { ActionLoadingOverlay } from '../components/common/Loadin
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import ConnectionStatusIndicator, { useConnectionStatus } from '../components/common/ConnectionStatusIndicator';
 
+// Import constants
+import { SPACING } from '../constants';
+
 // Constants
 const SUBJECTS = [
   { id: 'math', label: '📊 Math', value: 'Math' },
