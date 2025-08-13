@@ -9,8 +9,8 @@ import { ROUTES } from '../types/navigation';
 // Import stack navigators
 import HomeStack from './stacks/HomeStack';
 import PostStack from './stacks/PostStack';
-import MyTasksStack from './stacks/MyTasksStack';
-import NotificationsStack from './stacks/NotificationsStack';
+import TasksStack from './stacks/TasksStack';
+import AIStack from './stacks/AIStack';
 import ProfileStack from './stacks/ProfileStack';
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
@@ -19,8 +19,8 @@ const Tab = createBottomTabNavigator<MainTabsParamList>();
 const TAB_ICON: Record<string, { focused: any; default: any }> = {
   HomeStack: { focused: 'home', default: 'home-outline' },
   PostStack: { focused: 'add-circle', default: 'add-circle-outline' },
-  MyTasksStack: { focused: 'briefcase', default: 'briefcase-outline' },
-  NotificationsStack: { focused: 'notifications', default: 'notifications-outline' },
+  TasksStack: { focused: 'briefcase', default: 'briefcase-outline' },
+  AIStack: { focused: 'chatbubble-ellipses', default: 'chatbubble-ellipses-outline' },
   ProfileStack: { focused: 'person', default: 'person-outline' },
 };
 
@@ -72,17 +72,17 @@ export function AppTabs() {
         }}
       />
       <Tab.Screen 
-        name="MyTasksStack" 
-        component={MyTasksStack}
+        name="TasksStack" 
+        component={TasksStack}
         options={{
-          tabBarLabel: 'My Tasks',
+          tabBarLabel: 'Tasks',
         }}
       />
       <Tab.Screen 
-        name="NotificationsStack" 
-        component={NotificationsStack}
+        name="AIStack" 
+        component={AIStack}
         options={{
-          tabBarLabel: 'Notifications',
+          tabBarLabel: 'AI',
         }}
       />
       <Tab.Screen 

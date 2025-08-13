@@ -4,9 +4,6 @@ import { COLORS } from '../../constants';
 import { PostStackParamList } from '../../types/navigation';
 import { ROUTES } from '../../types/navigation';
 
-// Import main PostScreen
-import PostScreen from '../../screens/PostScreen';
-
 // Import PostTaskSteps screens
 import StepOne from '../../screens/PostTaskSteps/StepOne';
 import StepTwo from '../../screens/PostTaskSteps/StepTwo';
@@ -17,9 +14,14 @@ import StepFive from '../../screens/PostTaskSteps/StepFive';
 // Import PostTaskScreen for review
 import PostTaskScreen from '../../screens/PostTaskScreen';
 
+// Import main PostScreen
+import PostScreen from '../../screens/PostScreen';
+
 const Stack = createStackNavigator<PostStackParamList>();
 
 const PostStack = () => {
+
+
   return (
     <Stack.Navigator
       initialRouteName="Post"
@@ -41,6 +43,7 @@ const PostStack = () => {
         name="Post"
         component={PostScreen}
         options={{
+          title: 'Post Task',
           headerShown: false, // Hide header for full-bleed design
         }}
       />

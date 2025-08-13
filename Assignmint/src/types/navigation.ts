@@ -44,6 +44,11 @@ export type PostStackParamList = {
   };
 };
 
+// AI Stack ParamList
+export type AIStackParamList = {
+  AI: undefined;
+};
+
 // Tasks Stack ParamList
 export type TasksStackParamList = {
   Tasks: undefined;
@@ -61,10 +66,11 @@ export type TasksStackParamList = {
   };
 };
 
-// AI Stack ParamList
-export type AIStackParamList = {
-  AI: undefined;
-  AIAssistant: undefined;
+
+
+// Notifications Stack ParamList
+export type NotificationsStackParamList = {
+  Notifications: undefined;
   TaskDetails: {
     taskId: string;
     task?: any;
@@ -88,6 +94,7 @@ export type ProfileStackParamList = {
   PrivacyPolicy: undefined;
   AIAssistant: undefined;
   Analytics: undefined;
+  SystemStatus: undefined;
 };
 
 // Main Tabs ParamList
@@ -104,6 +111,45 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   MainTabs: NavigatorScreenParams<MainTabsParamList>;
   ScreenCatalog: undefined;
+  // Stack-only routes accessible from anywhere
+  TaskDetails: {
+    taskId: string;
+    task?: any;
+  };
+  UploadDelivery: {
+    taskId: string;
+    task?: any;
+  };
+  Chat: {
+    taskId: string;
+    task?: any;
+  };
+  ChatThread: {
+    chat: { id: string; name: string; taskTitle: string };
+  };
+  Messages: undefined;
+  Notifications: undefined;
+  Settings: undefined;
+  Payments: undefined;
+  AddPaymentMethod: undefined;
+  Wallet: undefined;
+  AIAssistant: undefined;
+  Analytics: undefined;
+  SystemStatus: undefined;
+  AppearanceSettings: undefined;
+  NotificationPreferences: undefined;
+  LanguageSelection: undefined;
+  DownloadPreferences: undefined;
+  BetaFeatures: undefined;
+  ContactSupport: undefined;
+  TermsOfService: undefined;
+  PrivacyPolicy: undefined;
+  TaskPostedConfirmation: {
+    taskTitle: string;
+    budget: string;
+    matchingPreference: string;
+  };
+  IconTest: undefined;
 };
 
 // Screen Catalog ParamList (for development)
@@ -116,8 +162,9 @@ export type AppParamList = RootStackParamList &
   AuthStackParamList & 
   HomeStackParamList & 
   PostStackParamList & 
-  TasksStackParamList & 
-  AIStackParamList & 
+  TasksStackParamList &
+  AIStackParamList &
+  NotificationsStackParamList &
   ProfileStackParamList &
   ScreenCatalogParamList;
 
@@ -159,9 +206,10 @@ export const ROUTES = {
   TASKS: 'Tasks',
   UPLOAD_DELIVERY: 'UploadDelivery',
   
+
+  
   // AI Stack
   AI: 'AI',
-  AI_ASSISTANT: 'AIAssistant',
   
   // Profile Stack
   PROFILE: 'Profile',
@@ -179,6 +227,8 @@ export const ROUTES = {
   PRIVACY_POLICY: 'PrivacyPolicy',
   AI_ASSISTANT: 'AIAssistant',
   ANALYTICS: 'Analytics',
+  SYSTEM_STATUS: 'SystemStatus',
+  NOTIFICATIONS: 'Notifications',
   
   // Development
   SCREEN_CATALOG: 'ScreenCatalog',
