@@ -110,7 +110,7 @@ const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'in_progress':
           return (
             <View style={styles.buttonContainer}>
@@ -134,7 +134,7 @@ const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
               </TouchableOpacity>
             </View>
           );
-        
+
         default:
           return (
             <View style={styles.buttonContainer}>
@@ -167,7 +167,7 @@ const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'in_progress':
           return (
             <View style={styles.buttonContainer}>
@@ -185,7 +185,7 @@ const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
               </TouchableOpacity>
             </View>
           );
-        
+
         case 'completed':
           return (
             <View style={styles.buttonContainer}>
@@ -203,7 +203,7 @@ const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
               </TouchableOpacity>
             </View>
           );
-        
+
         default:
           return (
             <View style={styles.buttonContainer}>
@@ -223,7 +223,7 @@ const TaskActionButtons: React.FC<TaskActionButtonsProps> = ({
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Actions</Text>
       {renderActionButtons()}
-      
+
       {/* Status Info */}
       <View style={styles.statusInfo}>
         <Text style={styles.statusInfoText}>
@@ -307,4 +307,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TaskActionButtons; 
+export default TaskActionButtons;

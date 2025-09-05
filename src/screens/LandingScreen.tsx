@@ -6,17 +6,30 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import Icon, { Icons } from '../components/common/Icon';
 import { COLORS } from '../constants';
+import { useAuth } from '../state/AuthProvider';
 
 const LandingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { enterGuest } = useAuth();
+  
   const handleSignUp = () => {
     navigation.navigate('SignUp');
   };
 
-  const handleGuestMode = () => {
-    navigation.navigate('MainTabs');
+  const handleGuestMode = async () => {
+    try {
+      console.log('🔄 Entering guest mode from Landing...');
+      await enterGuest();
+      console.log('✅ Guest mode entered successfully from Landing');
+      // Navigate to main tabs after entering guest mode
+              // AuthProvider will handle navigation to MainTabs automatically
+    } catch (error) {
+      console.error('❌ Failed to enter guest mode from Landing:', error);
+      Alert.alert('Error', 'Failed to enter guest mode. Please try again.');
+    }
   };
 
   const handleLogin = () => {
@@ -36,7 +49,7 @@ const LandingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Features */}
         <View style={styles.featuresSection}>
           <Text style={styles.sectionTitle}>Why Choose AssignMint?</Text>
-          
+
           <View style={styles.featureItem}>
             <View style={styles.featureIcon}>
               <Icon name={Icons.people} size={24} color={COLORS.primary} />
@@ -108,7 +121,7 @@ const LandingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Testimonials */}
         <View style={styles.testimonialsSection}>
           <Text style={styles.sectionTitle}>What Students Say</Text>
-          
+
           <View style={styles.testimonialCard}>
             <Text style={styles.testimonialText}>
               "AssignMint helped me ace my business case study. The expert was incredibly knowledgeable and delivered exactly what I needed."
@@ -136,11 +149,11 @@ const LandingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <TouchableOpacity style={styles.primaryButton} onPress={handleSignUp}>
           <Text style={styles.primaryButtonText}>Get Started</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.secondaryButton} onPress={handleLogin}>
           <Text style={styles.secondaryButtonText}>I already have an account</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.guestButton} onPress={handleGuestMode}>
           <Text style={styles.guestButtonText}>Continue as Guest</Text>
         </TouchableOpacity>

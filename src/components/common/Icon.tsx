@@ -10,18 +10,18 @@ interface IconProps {
   style?: any;
 }
 
-const Icon: React.FC<IconProps> = ({ 
-  name, 
-  size = 24, 
-  color = COLORS.text, 
-  style 
+const Icon: React.FC<IconProps> = ({
+  name,
+  size = 24,
+  color = COLORS.text,
+  style,
 }) => {
   return (
-    <Ionicons 
-      name={name as any} 
-      size={size} 
-      color={color} 
-      style={style} 
+    <Ionicons
+      name={name as any}
+      size={size}
+      color={color}
+      style={style}
     />
   );
 };
@@ -51,7 +51,7 @@ export const Icons = {
   close: 'close',
   menu: 'menu',
   'arrow-forward': 'arrow-forward',
-  
+
   // Actions
   edit: 'create',
   'edit-outline': 'create-outline',
@@ -71,7 +71,7 @@ export const Icons = {
   'add-outline': 'add-outline',
   'add-circle': 'add-circle',
   'add-circle-outline': 'add-circle-outline',
-  
+
   // Categories
   math: 'calculator',
   'math-outline': 'calculator-outline',
@@ -103,7 +103,7 @@ export const Icons = {
   'engineering-outline': 'construct-outline',
   art: 'color-palette',
   'art-outline': 'color-palette-outline',
-  
+
   // UI Elements
   help: 'help-circle',
   'help-outline': 'help-circle-outline',
@@ -133,7 +133,7 @@ export const Icons = {
   'timer-outline': 'timer-outline',
   flag: 'flag',
   'flag-outline': 'flag-outline',
-  
+
   // Communication
   email: 'mail',
   'email-outline': 'mail-outline',
@@ -149,7 +149,7 @@ export const Icons = {
   'file-outline': 'document-outline',
   attachment: 'attach',
   'attachment-outline': 'attach-outline',
-  
+
   // AI & Tech
   ai: 'sparkles',
   'ai-outline': 'sparkles-outline',
@@ -165,7 +165,7 @@ export const Icons = {
   'cloud-outline': 'cloud-outline',
   database: 'server',
   'database-outline': 'server-outline',
-  
+
   // Payment & Finance
   money: 'cash',
   'money-outline': 'cash-outline',
@@ -179,7 +179,7 @@ export const Icons = {
   'bank-outline': 'business-outline',
   payment: 'card',
   'payment-outline': 'card-outline',
-  
+
   // Social
   users: 'people',
   'users-outline': 'people-outline',
@@ -191,7 +191,7 @@ export const Icons = {
   'team-outline': 'people-outline',
   community: 'people',
   'community-outline': 'people-outline',
-  
+
   // Status
   online: 'ellipse',
   'online-outline': 'ellipse-outline',
@@ -201,7 +201,7 @@ export const Icons = {
   'busy-outline': 'time-outline',
   away: 'ellipse',
   'away-outline': 'ellipse-outline',
-  
+
   // Tasks
   briefcase: 'briefcase',
   'briefcase-outline': 'briefcase-outline',
@@ -209,7 +209,7 @@ export const Icons = {
   'task-outline': 'checkbox-outline',
   list: 'list',
   'list-outline': 'list-outline',
-  
+
   // Additional icons for missing references
   book: 'book',
   'book-outline': 'book-outline',
@@ -251,7 +251,7 @@ export const Icons = {
   'filter-outline': 'filter-outline',
   sort: 'funnel',
   'sort-outline': 'funnel-outline',
-  
+
   // Additional missing icons
   apps: 'apps',
   'apps-outline': 'apps-outline',
@@ -269,10 +269,18 @@ export const Icons = {
   'checkmark-outline': 'checkmark-outline',
   arrowBack: 'arrow-back',
   'arrow-back-outline': 'arrow-back-outline',
-  
+
+  // Auth
+  logout: 'log-out-outline',
+  'logout-outline': 'log-out-outline',
+  signOut: 'log-out-outline',
+  'sign-out-outline': 'log-out-outline',
+
   // Default fallback
   default: 'help-circle',
-  'default-outline': 'help-circle-outline'
+  'default-outline': 'help-circle-outline',
+
+  // App-specific icons (these are already defined above, so removing duplicates)
 };
 
 export default Icon;

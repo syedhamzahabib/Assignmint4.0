@@ -1,38 +1,24 @@
-# --- Enable Node Hoisting for react_native_pods.rb ---
-require Pod::Executable.execute_command('node', ['-p',
-  'require.resolve(
-    "react-native/scripts/react_native_pods.rb",
-    {paths: [process.argv[1]]},
-  )', __dir__]).strip
+platform :ios, '15.1'
 
 require_relative '../node_modules/react-native/scripts/react_native_pods'
-project 'Assignmint.xcodeproj'
-
-platform :ios, '16.0'
-prepare_react_native_project!
-
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => :static
-end
 
 target 'Assignmint' do
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    :hermes_enabled => false,
-    :fabric_enabled => true,
-    :new_arch_enabled => true,
-    :app_path => "#{Pod::Config.instance.installation_root}/.."
+    :hermes_enabled => true,
+    :fabric_enabled => false
   )
 
+  # Temporarily disable Flipper to reduce header/link issues
+  # use_flipper!()
+
   post_install do |installer|
+    react_native_post_install(installer)
     installer.pods_project.targets.each do |t|
-      t.build_configurations.each do |c|
-        c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
-        c.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
+      t.build_configurations.each do |cfg|
+        cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
       end
     end
   end

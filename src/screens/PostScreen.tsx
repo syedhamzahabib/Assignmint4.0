@@ -74,7 +74,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       Alert.alert('Error', 'Please set budget and urgency level');
       return;
     }
-    
+
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
@@ -117,13 +117,13 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       attachments: [],
                     });
                     setCurrentStep(1);
-                    navigation.navigate('home');
-                  }
-                }
+                    // Navigation will happen automatically when auth state changes
+                  },
+                },
               ]
             );
-          }
-        }
+          },
+        },
       ]
     );
   }, [navigation]);
@@ -135,11 +135,11 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View key={step} style={styles.stepContainer}>
             <View style={[
               styles.stepCircle,
-              step <= currentStep ? styles.activeStepCircle : styles.inactiveStepCircle
+              step <= currentStep ? styles.activeStepCircle : styles.inactiveStepCircle,
             ]}>
               <Text style={[
                 styles.stepNumber,
-                step <= currentStep ? styles.activeStepNumber : styles.inactiveStepNumber
+                step <= currentStep ? styles.activeStepNumber : styles.inactiveStepNumber,
               ]}>
                 {step}
               </Text>
@@ -147,7 +147,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             {step < 4 && (
               <View style={[
                 styles.stepLine,
-                step < currentStep ? styles.activeStepLine : styles.inactiveStepLine
+                step < currentStep ? styles.activeStepLine : styles.inactiveStepLine,
               ]} />
             )}
           </View>
@@ -165,21 +165,21 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Text style={styles.stepTitle}>Choose Subject & Category</Text>
         <Text style={styles.stepSubtitle}>Select the subject area for your task</Text>
       </View>
-      
+
       <View style={styles.subjectsGrid}>
         {subjects.map(subject => (
           <TouchableOpacity
             key={subject.id}
             style={[
               styles.subjectCard,
-              formData.subject === subject.value && styles.selectedSubjectCard
+              formData.subject === subject.value && styles.selectedSubjectCard,
             ]}
             onPress={() => updateFormData('subject', subject.value)}
           >
             <Text style={styles.subjectIcon}>{subject.label.split(' ')[0]}</Text>
             <Text style={[
               styles.subjectLabel,
-              formData.subject === subject.value && styles.selectedSubjectLabel
+              formData.subject === subject.value && styles.selectedSubjectLabel,
             ]}>
               {subject.label.split(' ').slice(1).join(' ')}
             </Text>
@@ -195,7 +195,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Text style={styles.stepTitle}>Task Details</Text>
         <Text style={styles.stepSubtitle}>Describe what you need help with</Text>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Task Title *</Text>
         <TextInput
@@ -207,7 +207,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         />
         <Text style={styles.characterCount}>{formData.title.length}/100</Text>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Description *</Text>
         <TextInput
@@ -221,7 +221,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         />
         <Text style={styles.characterCount}>{formData.description.length}/500</Text>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Tags (optional)</Text>
         <TextInput
@@ -241,7 +241,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Text style={styles.stepTitle}>Budget & Timeline</Text>
         <Text style={styles.stepSubtitle}>Set your budget and urgency level</Text>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Budget (USD) *</Text>
         <View style={styles.budgetInput}>
@@ -256,7 +256,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
         <Text style={styles.inputHint}>Set a fair budget to attract quality work</Text>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Urgency Level *</Text>
         <View style={styles.urgencyOptions}>
@@ -265,7 +265,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               key={urgency.id}
               style={[
                 styles.urgencyCard,
-                formData.urgency === urgency.value && styles.selectedUrgencyCard
+                formData.urgency === urgency.value && styles.selectedUrgencyCard,
               ]}
               onPress={() => updateFormData('urgency', urgency.value)}
             >
@@ -273,14 +273,14 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.urgencyIcon}>{urgency.label.split(' ')[0]}</Text>
                 <Text style={[
                   styles.urgencyLabel,
-                  formData.urgency === urgency.value && styles.selectedUrgencyLabel
+                  formData.urgency === urgency.value && styles.selectedUrgencyLabel,
                 ]}>
                   {urgency.label.split(' ').slice(1).join(' ')}
                 </Text>
               </View>
               <Text style={[
                 styles.urgencyDescription,
-                formData.urgency === urgency.value && styles.selectedUrgencyDescription
+                formData.urgency === urgency.value && styles.selectedUrgencyDescription,
               ]}>
                 {urgency.description}
               </Text>
@@ -288,7 +288,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ))}
         </View>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Estimated Hours</Text>
         <TextInput
@@ -300,7 +300,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         />
         <Text style={styles.inputHint}>Optional: Help others understand the scope</Text>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Due Date</Text>
         <TextInput
@@ -320,7 +320,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Text style={styles.stepTitle}>AI Level & Privacy</Text>
         <Text style={styles.stepSubtitle}>Configure AI assistance and privacy settings</Text>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>AI Assistance Level</Text>
         <View style={styles.aiLevelOptions}>
@@ -329,7 +329,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               key={aiLevel.id}
               style={[
                 styles.aiLevelCard,
-                formData.aiLevel === aiLevel.value && styles.selectedAiLevelCard
+                formData.aiLevel === aiLevel.value && styles.selectedAiLevelCard,
               ]}
               onPress={() => updateFormData('aiLevel', aiLevel.value)}
             >
@@ -337,14 +337,14 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.aiLevelIcon}>{aiLevel.icon}</Text>
                 <Text style={[
                   styles.aiLevelLabel,
-                  formData.aiLevel === aiLevel.value && styles.selectedAiLevelLabel
+                  formData.aiLevel === aiLevel.value && styles.selectedAiLevelLabel,
                 ]}>
                   {aiLevel.label}
                 </Text>
               </View>
               <Text style={[
                 styles.aiLevelDescription,
-                formData.aiLevel === aiLevel.value && styles.selectedAiLevelDescription
+                formData.aiLevel === aiLevel.value && styles.selectedAiLevelDescription,
               ]}>
                 {aiLevel.description}
               </Text>
@@ -352,7 +352,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ))}
         </View>
       </View>
-      
+
       <View style={styles.inputGroup}>
         <View style={styles.switchContainer}>
           <Text style={styles.inputLabel}>Make Task Public</Text>
@@ -367,7 +367,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           Public tasks are visible to all users. Private tasks are only visible to invited users.
         </Text>
       </View>
-      
+
       <View style={styles.summaryContainer}>
         <Text style={styles.summaryTitle}>Task Summary</Text>
         <View style={styles.summaryGrid}>
@@ -412,13 +412,13 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -432,7 +432,7 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {renderStepIndicator()}
 
       {/* Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
@@ -443,23 +443,23 @@ const PostScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {/* Navigation Buttons */}
       <View style={styles.navigationButtons}>
         {currentStep > 1 && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.secondaryButton}
             onPress={prevStep}
           >
             <Text style={styles.secondaryButtonText}>Previous</Text>
           </TouchableOpacity>
         )}
-        
+
         {currentStep < 4 ? (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.primaryButton}
             onPress={nextStep}
           >
             <Text style={styles.primaryButtonText}>Next</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.primaryButton}
             onPress={handleSubmit}
           >
@@ -809,4 +809,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PostScreen; 
+export default PostScreen;

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { COLORS, FONTS, SPACING } from '../constants';
+import API from '../lib/api';
 
 // Import step components
 import StepOne from './PostTaskSteps/StepOne';
@@ -66,8 +67,21 @@ const PostTaskScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleSubmit = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('📝 Submitting task to API:', formData);
+      
+      // Prepare task data for API
+      const taskData = {
+        title: formData.taskTitle,
+        description: formData.description,
+        subject: formData.selectedSubject,
+        price: parseFloat(formData.budget) || 0,
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default to 7 days from now
+        fileUrls: formData.files || [],
+      };
+
+      // Call API to create task
+      const createdTask = await API.createTask(taskData);
+      console.log('✅ Task created successfully:', createdTask);
 
       // Show success message
       Alert.alert(
@@ -108,7 +122,7 @@ const PostTaskScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       );
 
     } catch (error) {
-      console.error('Error submitting task:', error);
+      console.error('❌ Error submitting task:', error);
       Alert.alert(
         '❌ Submission Error',
         'There was an error posting your task. Please check your information and try again.',

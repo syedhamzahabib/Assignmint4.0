@@ -1,7 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { COLORS } from '../../constants';
-import { MyTasksStackParamList } from '../../types/navigation';
+import { TasksStackParamList } from '../../types/navigation';
 import { ROUTES } from '../../types/navigation';
 
 // Import screens
@@ -10,7 +10,7 @@ import TaskDetailsScreen from '../../screens/TaskDetailsScreen';
 import UploadDeliveryScreen from '../../screens/UploadDeliveryScreen';
 import ChatScreen from '../../screens/ChatScreen';
 
-const Stack = createStackNavigator<MyTasksStackParamList>();
+const Stack = createStackNavigator<TasksStackParamList>();
 
 const MyTasksStack = () => {
   return (

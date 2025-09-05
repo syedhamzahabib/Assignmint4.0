@@ -21,6 +21,7 @@ export interface AuthActions {
   signIn: (user: User) => void;
   signUp: (user: User) => void;
   signOut: () => void;
+  clearAuth: () => void;
   setGuestMode: () => void;
   upgradeFromGuest: (user: User) => void;
   setPendingRoute: (routeName: string, params?: any) => void;
@@ -50,7 +51,11 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       signOut: () => {
-        set({ user: null, mode: 'guest', pendingRoute: null, isLoading: false });
+        set({ user: null, mode: 'user', pendingRoute: null, isLoading: false });
+      },
+
+      clearAuth: () => {
+        set({ user: null, mode: null, pendingRoute: null, isLoading: false });
       },
 
       setGuestMode: () => {

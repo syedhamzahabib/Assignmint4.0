@@ -18,20 +18,20 @@ interface StepFourProps {
 }
 
 const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
-  const { 
-    taskTitle, 
-    selectedSubject, 
-    selectedUrgency, 
-    isForStudent, 
-    description, 
-    selectedTemplate, 
+  const {
+    taskTitle,
+    selectedSubject,
+    selectedUrgency,
+    isForStudent,
+    description,
+    selectedTemplate,
     uploadedFiles,
     aiRangeMin, // Fixed: was aiPrecision
     aiRangeMax, // Fixed: was aiOriginality
     aiTaskExplainer,
-    summaryOnDelivery
+    summaryOnDelivery,
   } = route.params;
-  
+
   const [budget, setBudget] = useState('');
   const [budgetCursorPosition, setBudgetCursorPosition] = useState(0);
   const [deadline, setDeadline] = useState('');
@@ -47,7 +47,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -55,7 +55,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
@@ -73,7 +73,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
     const { contentOffset } = event.nativeEvent;
     const hourIndex = Math.round(contentOffset.y / 40);
     const hour = Math.max(1, Math.min(12, hourIndex + 1));
-    
+
     const newTime = new Date(selectedTime);
     const isPM = newTime.getHours() >= 12;
     newTime.setHours(isPM ? hour + 12 : hour);
@@ -84,7 +84,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
     const { contentOffset } = event.nativeEvent;
     const minuteIndex = Math.round(contentOffset.y / 40);
     const minute = Math.max(0, Math.min(59, minuteIndex));
-    
+
     const newTime = new Date(selectedTime);
     newTime.setMinutes(minute);
     setSelectedTime(newTime);
@@ -94,11 +94,11 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
     const { contentOffset } = event.nativeEvent;
     const periodIndex = Math.round(contentOffset.y / 40);
     const period = periodIndex === 0 ? 'AM' : 'PM';
-    
+
     const newTime = new Date(selectedTime);
     const currentHour = newTime.getHours();
     const isCurrentlyPM = currentHour >= 12;
-    
+
     if (period === 'AM' && isCurrentlyPM) {
       newTime.setHours(currentHour - 12);
     } else if (period === 'PM' && !isCurrentlyPM) {
@@ -108,15 +108,15 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
   };
 
   const getFullDeadline = () => {
-    if (!deadline && !deadlineTime) return '';
-    if (deadline && deadlineTime) return `${deadline} at ${deadlineTime}`;
+    if (!deadline && !deadlineTime) {return '';}
+    if (deadline && deadlineTime) {return `${deadline} at ${deadlineTime}`;}
     return deadline || deadlineTime;
   };
 
   // Budget suggestions based on urgency and subject
   const getBudgetSuggestions = () => {
     const suggestions = [];
-    
+
     if (selectedUrgency === 'high') {
       suggestions.push({ amount: '50', label: 'Quick Turnaround' });
       suggestions.push({ amount: '75', label: 'Priority Service' });
@@ -130,34 +130,34 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
       suggestions.push({ amount: '35', label: 'Standard Quality' });
       suggestions.push({ amount: '50', label: 'High Quality' });
     }
-    
+
     return suggestions;
   };
 
   const getBudgetHint = () => {
     const subject = selectedSubject?.toLowerCase() || '';
-    
+
     if (selectedUrgency === 'high') {
-      return "💡 Urgent tasks typically need higher budgets ($50+) to attract experts quickly.";
+      return '💡 Urgent tasks typically need higher budgets ($50+) to attract experts quickly.';
     } else if (subject.includes('essay') || subject.includes('writing')) {
-      return "💡 Essays typically range from $30-70 depending on length and complexity.";
+      return '💡 Essays typically range from $30-70 depending on length and complexity.';
     } else if (subject.includes('math') || subject.includes('calculus')) {
-      return "💡 Math problems usually cost $25-60 based on difficulty and number of problems.";
+      return '💡 Math problems usually cost $25-60 based on difficulty and number of problems.';
     } else if (subject.includes('programming') || subject.includes('coding')) {
-      return "💡 Programming projects typically range from $40-100+ depending on complexity.";
+      return '💡 Programming projects typically range from $40-100+ depending on complexity.';
     } else if (subject.includes('lab') || subject.includes('science')) {
-      return "💡 Lab reports usually cost $35-80 depending on the experiment complexity.";
+      return '💡 Lab reports usually cost $35-80 depending on the experiment complexity.';
     }
-    
-    return "💡 More complex or urgent tasks usually attract experts faster with higher budgets.";
+
+    return '💡 More complex or urgent tasks usually attract experts faster with higher budgets.';
   };
 
   const formatBudget = (value: string) => {
     // Remove all non-numeric characters except decimal point
     const numericValue = value.replace(/[^0-9.]/g, '');
-    
-    if (numericValue === '') return '';
-    
+
+    if (numericValue === '') {return '';}
+
     // Handle decimal points - only allow one
     const parts = numericValue.split('.');
     if (parts.length > 2) {
@@ -167,7 +167,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
       const formatted = `${wholePart}.${decimalPart}`;
       return formatted;
     }
-    
+
     // Limit decimal places to 2 (cents)
     if (parts.length === 2 && parts[1].length > 2) {
       const wholePart = parts[0];
@@ -175,7 +175,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
       const formatted = `${wholePart}.${decimalPart}`;
       return formatted;
     }
-    
+
     return numericValue;
   };
 
@@ -189,18 +189,18 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
   };
 
   const getBudgetDisplayValue = () => {
-    if (!budget) return '';
-    
+    if (!budget) {return '';}
+
     // Add commas for thousands in the whole number part
     const parts = budget.split('.');
     if (parts.length === 1) {
       const number = parseInt(parts[0], 10);
-      if (isNaN(number)) return budget;
+      if (isNaN(number)) {return budget;}
       return number.toLocaleString();
     } else {
       const wholePart = parseInt(parts[0], 10);
       const decimalPart = parts[1];
-      if (isNaN(wholePart)) return budget;
+      if (isNaN(wholePart)) {return budget;}
       return `${wholePart.toLocaleString()}.${decimalPart}`;
     }
   };
@@ -309,7 +309,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
             <Text style={styles.sectionSubtitle}>
               Set your budget to attract the right experts
             </Text>
-            
+
             <View style={styles.budgetInputContainer}>
               <Text style={styles.budgetDollarSign}>$</Text>
               <TextInput
@@ -321,9 +321,10 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                 keyboardType="decimal-pad"
                 maxLength={15}
                 onSelectionChange={(e) => setBudgetCursorPosition(e.nativeEvent.selection.start)}
+                testID="post.price"
               />
             </View>
-            
+
             {/* Budget Suggestions */}
             <View style={styles.budgetSuggestionsContainer}>
               <Text style={styles.budgetSuggestionsTitle}>Quick Suggestions:</Text>
@@ -340,7 +341,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                 ))}
               </View>
             </View>
-            
+
             {/* Budget Hint */}
             <View style={styles.budgetHintContainer}>
               <Text style={styles.budgetHintText}>{getBudgetHint()}</Text>
@@ -356,12 +357,13 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
             <Text style={styles.sectionSubtitle}>
               When do you need this completed?
             </Text>
-            
+
             <View style={styles.deadlineContainer}>
               {/* Date Picker */}
               <TouchableOpacity
                 style={styles.deadlineButton}
                 onPress={() => setShowDatePicker(true)}
+                testID="post.deadline"
               >
                 <Text style={styles.deadlineButtonIcon}>📅</Text>
                 <View style={styles.deadlineButtonContent}>
@@ -372,7 +374,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                 </View>
                 <Text style={styles.deadlineButtonArrow}>›</Text>
               </TouchableOpacity>
-              
+
               {/* Time Picker */}
               <TouchableOpacity
                 style={styles.deadlineButton}
@@ -388,7 +390,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                 <Text style={styles.deadlineButtonArrow}>›</Text>
               </TouchableOpacity>
             </View>
-            
+
             {/* Full Deadline Display */}
             {getFullDeadline() && (
               <View style={styles.fullDeadlineContainer}>
@@ -404,7 +406,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
             <Text style={styles.sectionSubtitle}>
               How would you like to find your expert?
             </Text>
-            
+
             <View style={styles.matchingContainer}>
               <TouchableOpacity
                 style={[
@@ -419,7 +421,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                   We'll automatically find and assign the best expert for your task
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.matchingButton,
@@ -473,7 +475,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                 <Text style={styles.overlayDoneText}>Done</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.calendarContainer}>
               {/* Calendar Header */}
               <View style={styles.calendarHeader}>
@@ -481,7 +483,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                   {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
               </View>
-              
+
               {/* Calendar Grid */}
               <View style={styles.calendarGrid}>
                 {/* Day headers */}
@@ -490,7 +492,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                     <Text key={day} style={styles.calendarDayHeader}>{day}</Text>
                   ))}
                 </View>
-                
+
                 {/* Calendar days */}
                 <View style={styles.calendarDays}>
                   {generateCalendarDays(selectedDate).map((day, index) => (
@@ -500,7 +502,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                         styles.calendarDay,
                         day.isSelected && styles.calendarDaySelected,
                         day.isToday && styles.calendarDayToday,
-                        !day.isCurrentMonth && styles.calendarDayOtherMonth
+                        !day.isCurrentMonth && styles.calendarDayOtherMonth,
                       ]}
                       onPress={() => day.isCurrentMonth && handleDateChange(day.date)}
                       disabled={!day.isCurrentMonth}
@@ -509,7 +511,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                         styles.calendarDayText,
                         day.isSelected && styles.calendarDayTextSelected,
                         day.isToday && styles.calendarDayTextToday,
-                        !day.isCurrentMonth && styles.calendarDayTextOtherMonth
+                        !day.isCurrentMonth && styles.calendarDayTextOtherMonth,
                       ]}>
                         {day.dayNumber}
                       </Text>
@@ -517,7 +519,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                   ))}
                 </View>
               </View>
-              
+
               {/* Month Navigation */}
               <View style={styles.calendarNavigation}>
                 <TouchableOpacity
@@ -565,7 +567,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                 <Text style={styles.overlayDoneText}>Done</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.clockContainer}>
               {/* Clock Display */}
               <View style={styles.clockDisplay}>
@@ -573,13 +575,13 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                   {formatTime(selectedTime)}
                 </Text>
               </View>
-              
+
               {/* iOS-Style Scrollable Time Picker */}
               <View style={styles.iosTimePickerContainer}>
                 {/* Hours Column */}
                 <View style={styles.iosTimePickerColumn}>
-                  <ScrollView 
-                    style={styles.iosTimePickerScroll} 
+                  <ScrollView
+                    style={styles.iosTimePickerScroll}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.iosTimePickerContent}
                     snapToInterval={40}
@@ -591,12 +593,12 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                         key={hour}
                         style={[
                           styles.iosTimePickerItem,
-                          selectedTime.getHours() % 12 === hour && styles.iosTimePickerItemSelected
+                          selectedTime.getHours() % 12 === hour && styles.iosTimePickerItemSelected,
                         ]}
                       >
                         <Text style={[
                           styles.iosTimePickerItemText,
-                          selectedTime.getHours() % 12 === hour && styles.iosTimePickerItemTextSelected
+                          selectedTime.getHours() % 12 === hour && styles.iosTimePickerItemTextSelected,
                         ]}>
                           {hour}
                         </Text>
@@ -604,16 +606,16 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                     ))}
                   </ScrollView>
                 </View>
-                
+
                 {/* Separator */}
                 <View style={styles.iosTimePickerSeparator}>
                   <Text style={styles.iosTimePickerSeparatorText}>:</Text>
                 </View>
-                
+
                 {/* Minutes Column */}
                 <View style={styles.iosTimePickerColumn}>
-                  <ScrollView 
-                    style={styles.iosTimePickerScroll} 
+                  <ScrollView
+                    style={styles.iosTimePickerScroll}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.iosTimePickerContent}
                     snapToInterval={40}
@@ -625,12 +627,12 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                         key={minute}
                         style={[
                           styles.iosTimePickerItem,
-                          selectedTime.getMinutes() === minute && styles.iosTimePickerItemSelected
+                          selectedTime.getMinutes() === minute && styles.iosTimePickerItemSelected,
                         ]}
                       >
                         <Text style={[
                           styles.iosTimePickerItemText,
-                          selectedTime.getMinutes() === minute && styles.iosTimePickerItemTextSelected
+                          selectedTime.getMinutes() === minute && styles.iosTimePickerItemTextSelected,
                         ]}>
                           {minute.toString().padStart(2, '0')}
                         </Text>
@@ -638,11 +640,11 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                     ))}
                   </ScrollView>
                 </View>
-                
+
                 {/* AM/PM Column */}
                 <View style={styles.iosTimePickerColumn}>
-                  <ScrollView 
-                    style={styles.iosTimePickerScroll} 
+                  <ScrollView
+                    style={styles.iosTimePickerScroll}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.iosTimePickerContent}
                     snapToInterval={40}
@@ -654,14 +656,14 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                         key={period}
                         style={[
                           styles.iosTimePickerItem,
-                          ((period === 'AM' && selectedTime.getHours() < 12) || 
-                           (period === 'PM' && selectedTime.getHours() >= 12)) && styles.iosTimePickerItemSelected
+                          ((period === 'AM' && selectedTime.getHours() < 12) ||
+                           (period === 'PM' && selectedTime.getHours() >= 12)) && styles.iosTimePickerItemSelected,
                         ]}
                       >
                         <Text style={[
                           styles.iosTimePickerItemText,
-                          ((period === 'AM' && selectedTime.getHours() < 12) || 
-                           (period === 'PM' && selectedTime.getHours() >= 12)) && styles.iosTimePickerItemTextSelected
+                          ((period === 'AM' && selectedTime.getHours() < 12) ||
+                           (period === 'PM' && selectedTime.getHours() >= 12)) && styles.iosTimePickerItemTextSelected,
                         ]}>
                           {period}
                         </Text>
@@ -670,7 +672,7 @@ const StepFour: React.FC<StepFourProps> = ({ navigation, route }) => {
                   </ScrollView>
                 </View>
               </View>
-              
+
               {/* Selection Indicator */}
               <View style={styles.iosTimePickerSelectionIndicator} />
             </View>
@@ -1226,4 +1228,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepFour; 
+export default StepFour;

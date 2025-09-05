@@ -31,25 +31,25 @@ const StepTwo: React.FC<StepTwoProps> = ({ formData, updateFormData }) => {
   const descriptionTemplates = [
     {
       title: '📝 Essay Template',
-      content: 'Please write an essay on [TOPIC] with the following requirements:\n• Word count: [NUMBER] words\n• Format: [FORMAT]\n• Include: [REQUIREMENTS]\n• Sources: [NUMBER] academic sources\n• Due date: [DATE]'
+      content: 'Please write an essay on [TOPIC] with the following requirements:\n• Word count: [NUMBER] words\n• Format: [FORMAT]\n• Include: [REQUIREMENTS]\n• Sources: [NUMBER] academic sources\n• Due date: [DATE]',
     },
     {
       title: '📊 Research Template',
-      content: 'I need help with a research project on [TOPIC]:\n• Research question: [QUESTION]\n• Methodology: [METHOD]\n• Data analysis: [ANALYSIS TYPE]\n• Expected outcomes: [OUTCOMES]\n• Format: [FORMAT]'
+      content: 'I need help with a research project on [TOPIC]:\n• Research question: [QUESTION]\n• Methodology: [METHOD]\n• Data analysis: [ANALYSIS TYPE]\n• Expected outcomes: [OUTCOMES]\n• Format: [FORMAT]',
     },
     {
       title: '💻 Coding Template',
-      content: 'I need help with a programming assignment:\n• Language: [PROGRAMMING LANGUAGE]\n• Problem: [DESCRIPTION]\n• Requirements: [REQUIREMENTS]\n• Deliverables: [FILES NEEDED]\n• Testing: [TESTING REQUIREMENTS]'
+      content: 'I need help with a programming assignment:\n• Language: [PROGRAMMING LANGUAGE]\n• Problem: [DESCRIPTION]\n• Requirements: [REQUIREMENTS]\n• Deliverables: [FILES NEEDED]\n• Testing: [TESTING REQUIREMENTS]',
     },
     {
       title: '🧮 Math Template',
-      content: 'I need help with a mathematics problem:\n• Topic: [TOPIC]\n• Problem: [PROBLEM DESCRIPTION]\n• Show all work and steps\n• Explain the solution process\n• Include any relevant formulas'
-    }
+      content: 'I need help with a mathematics problem:\n• Topic: [TOPIC]\n• Problem: [PROBLEM DESCRIPTION]\n• Show all work and steps\n• Explain the solution process\n• Include any relevant formulas',
+    },
   ];
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
@@ -60,7 +60,7 @@ const StepTwo: React.FC<StepTwoProps> = ({ formData, updateFormData }) => {
       </View>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -80,11 +80,11 @@ const StepTwo: React.FC<StepTwoProps> = ({ formData, updateFormData }) => {
           <Text style={styles.subtitle}>
             Describe your assignment in detail. Include specific requirements, topics, and any relevant information.
           </Text>
-          
+
           <TextInput
             style={[
               styles.textArea,
-              activeField === 'description' && styles.textAreaFocused
+              activeField === 'description' && styles.textAreaFocused,
             ]}
             value={formData.description}
             onChangeText={(value) => updateFormData('description', value)}
@@ -102,7 +102,7 @@ const StepTwo: React.FC<StepTwoProps> = ({ formData, updateFormData }) => {
             maxLength={1000}
             textAlignVertical="top"
           />
-          
+
           <View style={styles.fieldFooter}>
             <Text style={styles.characterCount}>
               {formData.description.length}/1000 characters
@@ -124,11 +124,11 @@ const StepTwo: React.FC<StepTwoProps> = ({ formData, updateFormData }) => {
           <Text style={styles.subtitle}>
             Add any additional requirements, preferences, or specific instructions
           </Text>
-          
+
           <TextInput
             style={[
               styles.textArea,
-              activeField === 'specialInstructions' && styles.textAreaFocused
+              activeField === 'specialInstructions' && styles.textAreaFocused,
             ]}
             value={formData.specialInstructions}
             onChangeText={(value) => updateFormData('specialInstructions', value)}
@@ -141,7 +141,7 @@ const StepTwo: React.FC<StepTwoProps> = ({ formData, updateFormData }) => {
             maxLength={500}
             textAlignVertical="top"
           />
-          
+
           <Text style={styles.characterCount}>
             {formData.specialInstructions.length}/500 characters
           </Text>
@@ -154,9 +154,9 @@ const StepTwo: React.FC<StepTwoProps> = ({ formData, updateFormData }) => {
             <Text style={styles.templatesSubtitle}>
               Tap to insert a template into your {activeField === 'description' ? 'description' : 'special instructions'}
             </Text>
-            
-            <ScrollView 
-              horizontal 
+
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.templatesList}
             >
@@ -345,4 +345,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepTwo; 
+export default StepTwo;

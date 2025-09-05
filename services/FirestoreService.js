@@ -1,23 +1,5 @@
 // services/FirestoreService.js - Enhanced with Connection Monitoring and Manual Match support
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  onSnapshot,
-  serverTimestamp,
-  increment,
-  writeBatch,
-  runTransaction
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import firestore from '@react-native-firebase/firestore';
 
 class FirestoreService {
   // Collections
@@ -60,8 +42,8 @@ class FirestoreService {
       
       const taskDoc = {
         ...taskData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
         status: taskData.matchingType === 'manual' ? 'awaiting_expert' : 'pending_assignment',
         viewCount: 0,
         applicantCount: 0,
@@ -81,7 +63,7 @@ class FirestoreService {
         tags: taskData.tags || [],
       };
 
-      const docRef = await addDoc(collection(db, this.COLLECTIONS.TASKS), taskDoc);
+      const docRef = await firestore().collection(this.COLLECTIONS.TASKS).add(taskDoc);
       
       console.log('✅ Task created with ID:', docRef.id);
       
@@ -111,43 +93,42 @@ class FirestoreService {
     try {
       console.log('🔍 Getting available manual tasks with filters:', filters);
       
-      let q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true)
-      );
+      let q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true);
 
       // Apply filters
       if (filters.subject && filters.subject !== 'all') {
-        q = query(q, where('subject', '==', filters.subject));
+        q = q.where('subject', '==', filters.subject);
       }
       
       if (filters.urgency && filters.urgency !== 'all') {
-        q = query(q, where('urgency', '==', filters.urgency));
+        q = q.where('urgency', '==', filters.urgency);
       }
 
       // Apply sorting
       switch (filters.sortBy) {
         case 'price_desc':
-          q = query(q, orderBy('budgetAmount', 'desc'));
+          q = q.orderBy('budgetAmount', 'desc');
           break;
         case 'price_asc':
-          q = query(q, orderBy('budgetAmount', 'asc'));
+          q = q.orderBy('budgetAmount', 'asc');
           break;
         case 'deadline_asc':
-          q = query(q, orderBy('deadline', 'asc'));
+          q = q.orderBy('deadline', 'asc');
           break;
         case 'recent':
         default:
-          q = query(q, orderBy('createdAt', 'desc'));
+          q = q.orderBy('createdAt', 'desc');
           break;
       }
 
       // Apply limit
-      q = query(q, limit(filters.limit || 20));
+      q = q.limit(filters.limit || 20);
 
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const tasks = [];
 
       querySnapshot.forEach((doc) => {
@@ -186,11 +167,11 @@ class FirestoreService {
     try {
       console.log('🎯 Expert accepting manual task:', { taskId, expertId });
       
-      return await runTransaction(db, async (transaction) => {
-        const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
+      return await firestore().runTransaction(async (transaction) => {
+        const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
         const taskDoc = await transaction.get(taskRef);
         
-        if (!taskDoc.exists()) {
+        if (!taskDoc.exists) {
           throw new Error('Task not found');
         }
         
@@ -210,8 +191,8 @@ class FirestoreService {
           status: 'in_progress',
           assignedExpertId: expertId,
           assignedExpertName: expertData.name || 'Expert',
-          assignedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          assignedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
           isActive: false, // Remove from public feed
           
           // Expert details
@@ -224,7 +205,7 @@ class FirestoreService {
         transaction.update(taskRef, updateData);
         
         // Create notification for requester
-        const notificationRef = doc(collection(db, this.COLLECTIONS.NOTIFICATIONS));
+        const notificationRef = firestore().collection(this.COLLECTIONS.NOTIFICATIONS).doc();
         transaction.set(notificationRef, {
           userId: taskData.requesterId,
           type: 'task_accepted',
@@ -233,7 +214,7 @@ class FirestoreService {
           taskId: taskId,
           expertId: expertId,
           expertName: expertData.name,
-          createdAt: serverTimestamp(),
+          createdAt: firestore.FieldValue.serverTimestamp(),
           read: false
         });
         
@@ -260,11 +241,11 @@ class FirestoreService {
     try {
       console.log('📤 Submitting task delivery:', { taskId, expertId });
       
-      return await runTransaction(db, async (transaction) => {
-        const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
+      return await firestore().runTransaction(async (transaction) => {
+        const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
         const taskDoc = await transaction.get(taskRef);
         
-        if (!taskDoc.exists()) {
+        if (!taskDoc.exists) {
           throw new Error('Task not found');
         }
         
@@ -278,11 +259,11 @@ class FirestoreService {
         // Update task status
         const updateData = {
           status: 'pending_review',
-          deliveredAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          deliveredAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
           delivery: {
             ...deliveryData,
-            submittedAt: serverTimestamp(),
+            submittedAt: firestore.FieldValue.serverTimestamp(),
             submittedBy: expertId
           }
         };
@@ -290,7 +271,7 @@ class FirestoreService {
         transaction.update(taskRef, updateData);
         
         // Create notification for requester
-        const notificationRef = doc(collection(db, this.COLLECTIONS.NOTIFICATIONS));
+        const notificationRef = firestore().collection(this.COLLECTIONS.NOTIFICATIONS).doc();
         transaction.set(notificationRef, {
           userId: taskData.requesterId,
           type: 'task_delivered',
@@ -298,7 +279,7 @@ class FirestoreService {
           message: `Your task "${taskData.title}" has been completed and is ready for review.`,
           taskId: taskId,
           expertId: expertId,
-          createdAt: serverTimestamp(),
+          createdAt: firestore.FieldValue.serverTimestamp(),
           read: false
         });
         
@@ -326,13 +307,12 @@ class FirestoreService {
       
       const fieldName = role === 'requester' ? 'requesterId' : 'assignedExpertId';
       
-      let q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where(fieldName, '==', userId),
-        orderBy('updatedAt', 'desc')
-      );
+      let q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where(fieldName, '==', userId)
+        .orderBy('updatedAt', 'desc');
       
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const tasks = [];
       
       querySnapshot.forEach((doc) => {
@@ -376,13 +356,12 @@ class FirestoreService {
     try {
       const fieldName = role === 'requester' ? 'requesterId' : 'assignedExpertId';
       
-      const q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where(fieldName, '==', userId),
-        orderBy('updatedAt', 'desc')
-      );
+      const q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where(fieldName, '==', userId)
+        .orderBy('updatedAt', 'desc');
       
-      const unsubscribe = onSnapshot(q, 
+      const unsubscribe = q.onSnapshot(
         (querySnapshot) => {
           this.notifyConnectionStatus(true);
 
@@ -434,29 +413,28 @@ class FirestoreService {
   // Subscribe to available manual tasks (real-time feed) with connection monitoring
   subscribeToManualTasks(filters, callback) {
     try {
-      let q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true)
-      );
+      let q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true);
 
       // Apply filters
       if (filters.subject && filters.subject !== 'all') {
-        q = query(q, where('subject', '==', filters.subject));
+        q = q.where('subject', '==', filters.subject);
       }
       
       // Apply sorting
       switch (filters.sortBy) {
         case 'recent':
         default:
-          q = query(q, orderBy('createdAt', 'desc'));
+          q = q.orderBy('createdAt', 'desc');
           break;
       }
 
-      q = query(q, limit(filters.limit || 20));
+      q = q.limit(filters.limit || 20);
 
-      const unsubscribe = onSnapshot(q,
+      const unsubscribe = q.onSnapshot(
         (querySnapshot) => {
           this.notifyConnectionStatus(true);
 
@@ -508,10 +486,10 @@ class FirestoreService {
     try {
       console.log('🔍 Getting task by ID:', taskId);
       
-      const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
-      const taskDoc = await getDoc(taskRef);
+      const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
+      const taskDoc = await taskRef.get();
       
-      if (!taskDoc.exists()) {
+      if (!taskDoc.exists) {
         return {
           success: false,
           message: 'Task not found'
@@ -533,9 +511,9 @@ class FirestoreService {
       
       // Increment view count for manual match tasks
       if (taskData.matchingType === 'manual' && taskData.status === 'awaiting_expert') {
-        await updateDoc(taskRef, {
-          viewCount: increment(1),
-          updatedAt: serverTimestamp()
+        await taskRef.update({
+          viewCount: firestore.FieldValue.increment(1),
+          updatedAt: firestore.FieldValue.serverTimestamp()
         });
         taskData.viewCount = (taskData.viewCount || 0) + 1;
       }
@@ -560,17 +538,17 @@ class FirestoreService {
     try {
       console.log('⚡ Submitting task action:', { taskId, action, userRole });
       
-      return await runTransaction(db, async (transaction) => {
-        const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
+      return await firestore().runTransaction(async (transaction) => {
+        const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
         const taskDoc = await transaction.get(taskRef);
         
-        if (!taskDoc.exists()) {
+        if (!taskDoc.exists) {
           throw new Error('Task not found');
         }
         
         const taskData = taskDoc.data();
         let updateData = {
-          updatedAt: serverTimestamp()
+          updatedAt: firestore.FieldValue.serverTimestamp()
         };
         
         let notificationData = null;
@@ -581,7 +559,7 @@ class FirestoreService {
               throw new Error('Only requester can approve tasks');
             }
             updateData.status = 'completed';
-            updateData.completedAt = serverTimestamp();
+            updateData.completedAt = firestore.FieldValue.serverTimestamp();
             notificationData = {
               userId: taskData.assignedExpertId,
               type: 'task_approved',
@@ -596,7 +574,7 @@ class FirestoreService {
               throw new Error('Only requester can dispute tasks');
             }
             updateData.status = 'disputed';
-            updateData.disputedAt = serverTimestamp();
+            updateData.disputedAt = firestore.FieldValue.serverTimestamp();
             updateData.disputeReason = actionData.reason || 'Quality issues';
             notificationData = {
               userId: taskData.assignedExpertId,
@@ -612,7 +590,7 @@ class FirestoreService {
               throw new Error('Only requester can cancel tasks');
             }
             updateData.status = 'cancelled';
-            updateData.cancelledAt = serverTimestamp();
+            updateData.cancelledAt = firestore.FieldValue.serverTimestamp();
             updateData.cancelReason = actionData.reason || 'Cancelled by requester';
             
             // If manual match task is cancelled and not yet assigned, make it available again
@@ -635,7 +613,7 @@ class FirestoreService {
               throw new Error('Only requester can request revisions');
             }
             updateData.status = 'revision_requested';
-            updateData.revisionRequestedAt = serverTimestamp();
+            updateData.revisionRequestedAt = firestore.FieldValue.serverTimestamp();
             updateData.revisionNotes = actionData.notes || 'Please make revisions';
             notificationData = {
               userId: taskData.assignedExpertId,
@@ -654,10 +632,10 @@ class FirestoreService {
         
         // Create notification if needed
         if (notificationData) {
-          const notificationRef = doc(collection(db, this.COLLECTIONS.NOTIFICATIONS));
+          const notificationRef = firestore().collection(this.COLLECTIONS.NOTIFICATIONS).doc();
           transaction.set(notificationRef, {
             ...notificationData,
-            createdAt: serverTimestamp(),
+            createdAt: firestore.FieldValue.serverTimestamp(),
             read: false
           });
         }
@@ -682,10 +660,10 @@ class FirestoreService {
   // Update task visibility (for manual match feed)
   async updateTaskVisibility(taskId, isVisible) {
     try {
-      const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
-      await updateDoc(taskRef, {
+      const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
+      await taskRef.update({
         isActive: isVisible,
-        updatedAt: serverTimestamp()
+        updatedAt: firestore.FieldValue.serverTimestamp()
       });
       
       return {
@@ -740,17 +718,16 @@ class FirestoreService {
       
       const keywords = searchQuery.toLowerCase().split(' ').filter(word => word.length > 1);
       
-      let q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true),
-        where('searchKeywords', 'array-contains-any', keywords),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
+      let q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true)
+        .where('searchKeywords', 'array-contains-any', keywords)
+        .orderBy('createdAt', 'desc')
+        .limit(20);
       
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const tasks = [];
       
       querySnapshot.forEach((doc) => {
@@ -787,14 +764,13 @@ class FirestoreService {
   // Get user notifications
   async getUserNotifications(userId, limit = 20) {
     try {
-      const q = query(
-        collection(db, this.COLLECTIONS.NOTIFICATIONS),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc'),
-        limit(limit)
-      );
+      const q = firestore()
+        .collection(this.COLLECTIONS.NOTIFICATIONS)
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .limit(limit);
       
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const notifications = [];
       
       querySnapshot.forEach((doc) => {
@@ -824,10 +800,10 @@ class FirestoreService {
   // Mark notification as read
   async markNotificationRead(notificationId) {
     try {
-      const notificationRef = doc(db, this.COLLECTIONS.NOTIFICATIONS, notificationId);
-      await updateDoc(notificationRef, {
+      const notificationRef = firestore().collection(this.COLLECTIONS.NOTIFICATIONS).doc(notificationId);
+      await notificationRef.update({
         read: true,
-        readAt: serverTimestamp()
+        readAt: firestore.FieldValue.serverTimestamp()
       });
       
       return {
@@ -848,26 +824,25 @@ class FirestoreService {
     try {
       console.log('🔍 Getting manual match tasks with filters:', filters);
       
-      let q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true)
-      );
+      let q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true);
 
       // Apply filters
       if (filters.subject && filters.subject !== 'all') {
-        q = query(q, where('subject', '==', filters.subject));
+        q = q.where('subject', '==', filters.subject);
       }
       
       if (filters.urgency && filters.urgency !== 'all') {
-        q = query(q, where('urgency', '==', filters.urgency));
+        q = q.where('urgency', '==', filters.urgency);
       }
 
       // Apply sorting
-      q = query(q, orderBy('createdAt', 'desc'), limit(20));
+      q = q.orderBy('createdAt', 'desc').limit(20);
 
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const tasks = [];
 
       querySnapshot.forEach((doc) => {
@@ -906,16 +881,15 @@ class FirestoreService {
     try {
       console.log('🔄 Setting up manual match tasks subscription...');
       
-      const q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
+      const q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true)
+        .orderBy('createdAt', 'desc')
+        .limit(20);
 
-      const unsubscribe = onSnapshot(q,
+      const unsubscribe = q.onSnapshot(
         (querySnapshot) => {
           this.notifyConnectionStatus(true);
 
@@ -967,11 +941,11 @@ class FirestoreService {
     try {
       console.log('🎯 Expert accepting task:', { taskId, expertId, expertName });
       
-      return await runTransaction(db, async (transaction) => {
-        const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
+      return await firestore().runTransaction(async (transaction) => {
+        const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
         const taskDoc = await transaction.get(taskRef);
         
-        if (!taskDoc.exists()) {
+        if (!taskDoc.exists) {
           throw new Error('Task not found');
         }
         
@@ -991,15 +965,15 @@ class FirestoreService {
           status: 'working', // Use 'working' status for expert view
           assignedExpertId: expertId,
           assignedExpertName: expertName,
-          assignedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          assignedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
           isActive: false, // Remove from public feed
         };
         
         transaction.update(taskRef, updateData);
         
         // Create notification for requester
-        const notificationRef = doc(collection(db, this.COLLECTIONS.NOTIFICATIONS));
+        const notificationRef = firestore().collection(this.COLLECTIONS.NOTIFICATIONS).doc();
         transaction.set(notificationRef, {
           userId: taskData.requesterId,
           type: 'task_accepted',
@@ -1008,7 +982,7 @@ class FirestoreService {
           taskId: taskId,
           expertId: expertId,
           expertName: expertName,
-          createdAt: serverTimestamp(),
+          createdAt: firestore.FieldValue.serverTimestamp(),
           read: false
         });
         
@@ -1033,10 +1007,10 @@ class FirestoreService {
   // Increment task views (for existing HomeScreen)
   async incrementTaskViews(taskId) {
     try {
-      const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
-      await updateDoc(taskRef, {
-        viewCount: increment(1),
-        lastViewedAt: serverTimestamp()
+      const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
+      await taskRef.update({
+        viewCount: firestore.FieldValue.increment(1),
+        lastViewedAt: firestore.FieldValue.serverTimestamp()
       });
       
       console.log(`👁️ Incremented view count for task: ${taskId}`);
@@ -1059,12 +1033,11 @@ class FirestoreService {
     try {
       const fieldName = role === 'requester' ? 'requesterId' : 'assignedExpertId';
       
-      const q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where(fieldName, '==', userId)
-      );
+      const q = firestore()
+        .collection(this.COLLECTIONS.TASKS)
+        .where(fieldName, '==', userId);
       
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const stats = {
         total: 0,
         active: 0,

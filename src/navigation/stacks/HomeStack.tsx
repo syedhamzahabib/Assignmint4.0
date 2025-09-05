@@ -7,7 +7,10 @@ import { ROUTES } from '../../types/navigation';
 // Import screens
 import HomeScreen from '../../screens/HomeScreen';
 import TaskDetailsScreen from '../../screens/TaskDetailsScreen';
-import ChatScreen from '../../screens/ChatScreen';
+import ChatThreadScreen from '../../screens/ChatThreadScreen';
+import NotificationsScreen from '../../screens/NotificationsScreen';
+import MessagesScreen from '../../screens/MessagesScreen';
+import NavigationTestScreen from '../../screens/NavigationTestScreen';
 
 const Stack = createStackNavigator<HomeStackParamList>();
 
@@ -45,12 +48,36 @@ const HomeStack = () => {
         })}
       />
       <Stack.Screen
-        name={ROUTES.CHAT}
-        component={ChatScreen}
+        name={ROUTES.CHAT_THREAD}
+        component={ChatThreadScreen}
         options={({ route }) => ({
           title: 'Chat',
           headerBackTitle: 'Back',
         })}
+      />
+      <Stack.Screen
+        name={ROUTES.NOTIFICATIONS}
+        component={NotificationsScreen}
+        options={{
+          title: 'Notifications',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name={ROUTES.MESSAGES}
+        component={MessagesScreen}
+        options={{
+          title: 'Messages',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name={ROUTES.NAVIGATION_TEST}
+        component={NavigationTestScreen}
+        options={{
+          title: 'Navigation Test',
+          headerBackTitle: 'Back',
+        }}
       />
     </Stack.Navigator>
   );

@@ -41,23 +41,23 @@ const App = () => {
     const initializeApp = async () => {
       try {
         console.log('🚀 Initializing AssignMint app...');
-        
+
         // Quick Firebase health check
         const healthCheck = quickFirebaseCheck();
         console.log('📊 Firebase Health Check Result:', healthCheck);
-        
+
         // Test Firebase connection
         const result = await testFirebaseConnection();
         const status = getFirebaseStatus();
         setFirebaseStatus(status);
-        
+
         if (!result.success) {
           console.warn('⚠️ Firebase test failed, but app will continue with mock data');
           setHasError(false); // Don't treat this as a fatal error
         } else {
           console.log('✅ Firebase connection test passed');
         }
-        
+
       } catch (error) {
         console.error('❌ App initialization error:', error);
         setHasError(false); // Don't treat this as a fatal error, use mock data

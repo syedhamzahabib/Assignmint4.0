@@ -8,8 +8,11 @@ import {
   SafeAreaView,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { COLORS, FONTS, SPACING } from '../../constants';
+import { useAuth } from '../../state/AuthProvider';
+import { taskService } from '../../services/taskService';
 
 interface StepFiveProps {
   navigation: any;
@@ -19,6 +22,9 @@ interface StepFiveProps {
 const StepFive: React.FC<StepFiveProps> = ({ navigation, route }) => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('visa_1234');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  
+  const { user } = useAuth();
 
   const {
     taskTitle,
@@ -47,18 +53,58 @@ const StepFive: React.FC<StepFiveProps> = ({ navigation, route }) => {
     { id: 'paypal', label: 'PayPal', icon: '📱', type: 'PayPal' },
   ];
 
-  const handlePostTask = () => {
+  const handlePostTask = async () => {
     if (!agreedToTerms) {
       Alert.alert('Terms Required', 'Please agree to the Terms of Service');
       return;
     }
 
-    // Navigate to confirmation screen
-    navigation.navigate('TaskPostedConfirmation', {
-      taskTitle,
-      budget,
-      matchingPreference,
-    });
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please sign in to post a task');
+      return;
+    }
+
+    setIsCreatingTask(true);
+
+    try {
+      // Create task in Firestore
+      const result = await taskService.createTask({
+        title: taskTitle,
+        subject: selectedSubject,
+        description: description,
+        budget: parseFloat(budget) || 0,
+        deadline: deadline,
+        deadlineTime: deadlineTime,
+        urgency: selectedUrgency,
+        matchingPreference: matchingPreference,
+        isForStudent: isForStudent,
+        ownerId: user.uid,
+        ownerName: user.displayName || user.email || 'Unknown User',
+        ownerEmail: user.email || '',
+        aiLevel: aiLevel,
+        aiTaskExplainer: aiTaskExplainer,
+        summaryOnDelivery: summaryOnDelivery,
+        uploadedFiles: uploadedFiles,
+        selectedTemplate: selectedTemplate,
+      });
+
+      if (result.success && result.taskId) {
+        // Navigate to confirmation screen with taskId
+        navigation.navigate('TaskPostedConfirmation', {
+          taskTitle,
+          budget,
+          matchingPreference,
+          taskId: result.taskId,
+        });
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+      Alert.alert('Error', 'Failed to create task. Please try again.');
+    } finally {
+      setIsCreatingTask(false);
+    }
   };
 
   const getSelectedPaymentMethod = () => {
@@ -274,8 +320,8 @@ const StepFive: React.FC<StepFiveProps> = ({ navigation, route }) => {
             <Text style={styles.infoTitle}>What happens next?</Text>
           </View>
           <Text style={styles.infoText}>
-            Once you post your task, we'll start matching you with qualified experts. 
-            {matchingPreference === 'auto' 
+            Once you post your task, we'll start matching you with qualified experts.
+            {matchingPreference === 'auto'
               ? ' You\'ll be automatically matched with the best available expert.'
               : ' You\'ll receive applications from multiple experts to choose from.'
             }
@@ -289,13 +335,18 @@ const StepFive: React.FC<StepFiveProps> = ({ navigation, route }) => {
       {/* Post Task Button */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity
-          style={[styles.postButton, !agreedToTerms && styles.postButtonDisabled]}
+          style={[styles.postButton, (!agreedToTerms || isCreatingTask) && styles.postButtonDisabled]}
           onPress={handlePostTask}
-          disabled={!agreedToTerms}
+          disabled={!agreedToTerms || isCreatingTask}
+          testID="post.submit"
         >
-          <Text style={[styles.postButtonText, !agreedToTerms && styles.postButtonTextDisabled]}>
-            Confirm & Post Task (${(budget * 1.10).toFixed(2)})
-          </Text>
+          {isCreatingTask ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <Text style={[styles.postButtonText, (!agreedToTerms || isCreatingTask) && styles.postButtonTextDisabled]}>
+              Confirm & Post Task (${(parseFloat(budget) * 1.10).toFixed(2)})
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -696,4 +747,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepFive; 
+export default StepFive;

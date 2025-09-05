@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,13 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { COLORS, FONTS, SPACING } from '../constants';
 import Icon, { Icons } from '../components/common/Icon';
+import API from '../lib/api';
+import session from '../lib/session';
 
 interface Task {
   id: string;
@@ -25,104 +29,40 @@ interface Task {
 
 const MyTasksScreen: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('All');
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Sample posted task data - tasks the user has created
-  const postedTasks: Task[] = [
-    {
-      id: '1',
-      title: 'Calculus Assignment Help',
-      description: 'Need assistance with calculus problems and concepts. Looking for someone with strong math background.',
-      date: 'Posted Oct 1, 2023',
-      status: 'ACTIVE',
-      price: '$50',
-      remainingTime: '3d 12h',
-      applicants: 5,
-      action: 'View'
-    },
-    {
-      id: '2',
-      title: 'Graphic Design Project',
-      description: 'Create a logo and branding materials for a startup. Need modern, professional design.',
-      date: 'Posted Sep 28, 2023',
-      status: 'IN_PROGRESS',
-      price: '$75',
-      remainingTime: '2d 5h',
-      applicants: 3,
-      action: 'Message'
-    },
-    {
-      id: '3',
-      title: 'Content Writing Task',
-      description: 'Write a 1500-word article on technology trends. SEO optimized content needed.',
-      date: 'Posted Oct 5, 2023',
-      status: 'ACTIVE',
-      price: '$40',
-      remainingTime: '5h',
-      applicants: 8,
-      action: 'Edit'
-    },
-    {
-      id: '4',
-      title: 'Python Web Development',
-      description: 'Build a Flask web application with user authentication. Full-stack development required.',
-      date: 'Posted Oct 4, 2023',
-      status: 'ACTIVE',
-      price: '$120',
-      remainingTime: '4h',
-      applicants: 2,
-      action: 'View'
-    },
-    {
-      id: '5',
-      title: 'Business Case Study',
-      description: 'Analyze a business case and provide strategic recommendations. MBA level analysis.',
-      date: 'Posted Oct 7, 2023',
-      status: 'COMPLETED',
-      price: '$95',
-      remainingTime: 'Completed',
-      applicants: 4,
-      action: 'Review'
-    },
-    {
-      id: '6',
-      title: 'Social Media Graphics',
-      description: 'Design social media posts for a marketing campaign. Need 10 posts with consistent branding.',
-      date: 'Posted Oct 3, 2023',
-      status: 'COMPLETED',
-      price: '$35',
-      remainingTime: 'Completed',
-      applicants: 6,
-      action: 'Review'
-    },
-    {
-      id: '7',
-      title: 'Chemistry Lab Report',
-      description: 'Write a comprehensive lab report for organic chemistry. Include data analysis and conclusions.',
-      date: 'Posted Oct 6, 2023',
-      status: 'IN_PROGRESS',
-      price: '$65',
-      remainingTime: '6h',
-      applicants: 1,
-      action: 'Message'
-    },
-    {
-      id: '8',
-      title: 'Mobile App UI Design',
-      description: 'Design user interface for a fitness tracking app. Modern, clean design with good UX.',
-      date: 'Posted Oct 8, 2023',
-      status: 'ACTIVE',
-      price: '$150',
-      remainingTime: '1d 8h',
-      applicants: 7,
-      action: 'View'
+  const loadMyTasks = async () => {
+    try {
+      setError(null);
+      const response = await API.getMyTasks();
+      console.log('📱 MyTasks API response:', response);
+      setTasks(response.tasks || []);
+    } catch (error: any) {
+      console.error('❌ Error loading my tasks:', error);
+      setError(error?.message || 'Failed to load tasks');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    loadMyTasks();
+  }, []);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadMyTasks();
+  };
 
   const filters = [
     { id: 'All', label: 'All Tasks', icon: Icons.task },
     { id: 'Active', label: 'Active', icon: Icons.clock },
     { id: 'In Progress', label: 'In Progress', icon: Icons.check },
-    { id: 'Completed', label: 'Completed', icon: Icons.check }
+    { id: 'Completed', label: 'Completed', icon: Icons.check },
   ];
 
   const getStatusColor = (status: string) => {
@@ -146,59 +86,77 @@ const MyTasksScreen: React.FC = () => {
     }
   };
 
-  const filteredTasks = postedTasks.filter(task => {
-    if (activeFilter === 'All') return true;
-    if (activeFilter === 'Active') return task.status === 'ACTIVE';
-    if (activeFilter === 'In Progress') return task.status === 'IN_PROGRESS';
-    if (activeFilter === 'Completed') return task.status === 'COMPLETED';
+  const filteredTasks = tasks.filter(task => {
+    if (activeFilter === 'All') {return true;}
+    if (activeFilter === 'Active') {return task.status === 'open';}
+    if (activeFilter === 'In Progress') {return task.status === 'in_progress';}
+    if (activeFilter === 'Completed') {return task.status === 'completed';}
     return true;
   });
 
-  const TaskCard: React.FC<{ task: Task }> = ({ task }) => (
-    <View style={styles.taskCard}>
-      <View style={styles.taskHeader}>
-        <View style={styles.taskMeta}>
-          <Text style={styles.taskDate}>{task.date}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
-              {task.status.replace('_', ' ')}
-            </Text>
+  const TaskCard: React.FC<{ task: any }> = ({ task }) => {
+    // Calculate time remaining
+    const deadline = new Date(task.deadline);
+    const now = new Date();
+    const timeDiff = deadline.getTime() - now.getTime();
+    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    let timeRemaining = '';
+    if (timeDiff <= 0) {
+      timeRemaining = 'Overdue';
+    } else if (days > 0) {
+      timeRemaining = `${days}d ${hours}h`;
+    } else {
+      timeRemaining = `${hours}h`;
+    }
+
+    return (
+      <View style={styles.taskCard}>
+        <View style={styles.taskHeader}>
+          <View style={styles.taskMeta}>
+            <Text style={styles.taskDate}>Posted {new Date(task.createdAt).toLocaleDateString()}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
+              <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
+                {task.status.replace('_', ' ')}
+              </Text>
+            </View>
           </View>
+          <Text style={styles.taskPrice}>${task.price}</Text>
         </View>
-        <Text style={styles.taskPrice}>{task.price}</Text>
-      </View>
-      
-      <Text style={styles.taskTitle}>{task.title}</Text>
-      <Text style={styles.taskDescription}>{task.description}</Text>
-      
-      <View style={styles.taskFooter}>
-        <View style={styles.taskInfo}>
-          <View style={styles.timeInfo}>
-            <Icon name={Icons.clock} size={16} color={COLORS.textSecondary} />
-            <Text style={styles.timeText}>
-              {task.remainingTime === 'Completed' ? 'Completed' : `Due in ${task.remainingTime}`}
-            </Text>
+
+        <Text style={styles.taskTitle}>{task.title}</Text>
+        <Text style={styles.taskDescription}>{task.description}</Text>
+
+        <View style={styles.taskFooter}>
+          <View style={styles.taskInfo}>
+            <View style={styles.timeInfo}>
+              <Icon name={Icons.clock} size={16} color={COLORS.textSecondary} />
+              <Text style={styles.timeText}>
+                {timeRemaining === 'Overdue' ? 'Overdue' : `Due in ${timeRemaining}`}
+              </Text>
+            </View>
+            <View style={styles.applicantsInfo}>
+              <Icon name={Icons.users} size={16} color={COLORS.textSecondary} />
+              <Text style={styles.applicantsText}>0 applicants</Text>
+            </View>
           </View>
-          <View style={styles.applicantsInfo}>
-            <Icon name={Icons.users} size={16} color={COLORS.textSecondary} />
-            <Text style={styles.applicantsText}>{task.applicants} applicants</Text>
-          </View>
+
+          <TouchableOpacity
+            style={[styles.actionButton, getActionButtonStyle('View')]}
+            onPress={() => console.log(`View task: ${task.id}`)}
+          >
+            <Text style={styles.actionButtonText}>View</Text>
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity 
-          style={[styles.actionButton, getActionButtonStyle(task.action)]}
-          onPress={() => console.log(`${task.action} task: ${task.id}`)}
-        >
-          <Text style={styles.actionButtonText}>{task.action}</Text>
-        </TouchableOpacity>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton}>
@@ -210,34 +168,45 @@ const MyTasksScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
         {/* Quick Stats */}
         <View style={styles.statsSection}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{postedTasks.filter(t => t.status === 'ACTIVE').length}</Text>
+            <Text style={styles.statNumber}>{tasks.filter(t => t.status === 'open').length}</Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{postedTasks.filter(t => t.status === 'IN_PROGRESS').length}</Text>
+            <Text style={styles.statNumber}>{tasks.filter(t => t.status === 'in_progress').length}</Text>
             <Text style={styles.statLabel}>In Progress</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{postedTasks.filter(t => t.status === 'COMPLETED').length}</Text>
+            <Text style={styles.statNumber}>{tasks.filter(t => t.status === 'completed').length}</Text>
             <Text style={styles.statLabel}>Completed</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
-              {postedTasks.reduce((sum, task) => sum + task.applicants, 0)}
+              {tasks.length}
             </Text>
-            <Text style={styles.statLabel}>Total Applicants</Text>
+            <Text style={styles.statLabel}>Total Tasks</Text>
           </View>
         </View>
 
         {/* Filter Section */}
         <View style={styles.filterSection}>
           <Text style={styles.sectionTitle}>Filter Tasks</Text>
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.filterScroll}
           >
@@ -246,14 +215,14 @@ const MyTasksScreen: React.FC = () => {
                 key={filter.id}
                 style={[
                   styles.filterButton,
-                  activeFilter === filter.id && styles.filterButtonActive
+                  activeFilter === filter.id && styles.filterButtonActive,
                 ]}
                 onPress={() => setActiveFilter(filter.id)}
               >
                 <Icon name={filter.icon} size={20} color={activeFilter === filter.id ? COLORS.white : COLORS.textSecondary} />
                 <Text style={[
                   styles.filterText,
-                  activeFilter === filter.id && styles.filterTextActive
+                  activeFilter === filter.id && styles.filterTextActive,
                 ]}>
                   {filter.label}
                 </Text>
@@ -261,6 +230,26 @@ const MyTasksScreen: React.FC = () => {
             ))}
           </ScrollView>
         </View>
+
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Loading your tasks...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorState}>
+            <Icon name={Icons.alert} size={48} color={COLORS.error} />
+            <Text style={styles.errorTitle}>Failed to load tasks</Text>
+            <Text style={styles.errorDescription}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadMyTasks}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Posted Tasks Section */}
         {filteredTasks.length > 0 && (
@@ -281,7 +270,7 @@ const MyTasksScreen: React.FC = () => {
             <Icon name={Icons.task} size={48} color={COLORS.textSecondary} />
             <Text style={styles.emptyTitle}>No tasks found</Text>
             <Text style={styles.emptyDescription}>
-              {activeFilter === 'All' 
+              {activeFilter === 'All'
                 ? "You haven't posted any tasks yet. Tap the Post tab to create your first task!"
                 : `No ${activeFilter.toLowerCase()} tasks found. Try changing your filter.`
               }
@@ -536,6 +525,45 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.sm,
     color: COLORS.textSecondary,
   },
+  loadingState: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xxl,
+    paddingHorizontal: SPACING.lg,
+  },
+  loadingText: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.md,
+  },
+  errorState: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xxl,
+    paddingHorizontal: SPACING.lg,
+  },
+  errorTitle: {
+    fontSize: FONTS.sizes.lg,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.error,
+    marginBottom: SPACING.sm,
+  },
+  errorDescription: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: SPACING.md,
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: COLORS.white,
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.bold,
+  },
 });
 
-export default MyTasksScreen; 
+export default MyTasksScreen;

@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONTS } from '../constants';
 import { ROUTES } from '../types/navigation';
 
@@ -124,7 +124,7 @@ const ScreenCatalog = () => {
         <Text style={styles.title}>Screen Catalog</Text>
         <Text style={styles.subtitle}>Development Navigation Tool</Text>
       </View>
-      
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {Object.entries(screenCategories).map(([category, screens]) =>
           renderCategory(category, screens)

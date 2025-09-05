@@ -13,29 +13,29 @@ import { COLORS } from '../../constants';
 
 // Enhanced urgency levels
 const URGENCY_LEVELS = [
-  { 
-    id: 'high', 
-    label: '🔥 High Priority', 
+  {
+    id: 'high',
+    label: '🔥 High Priority',
     value: 'high',
     description: 'Urgent - Need it ASAP',
     priceImpact: '+20% premium',
-    color: COLORS.error
+    color: COLORS.error,
   },
-  { 
-    id: 'medium', 
-    label: '⚡ Medium Priority', 
+  {
+    id: 'medium',
+    label: '⚡ Medium Priority',
     value: 'medium',
     description: 'Standard timeline',
     priceImpact: 'Standard pricing',
-    color: COLORS.warning
+    color: COLORS.warning,
   },
-  { 
-    id: 'low', 
-    label: '🌱 Low Priority', 
+  {
+    id: 'low',
+    label: '🌱 Low Priority',
     value: 'low',
     description: 'Flexible timeline',
     priceImpact: '-10% discount',
-    color: COLORS.success
+    color: COLORS.success,
   },
 ];
 
@@ -52,47 +52,47 @@ const StepFour: React.FC<StepFourProps> = ({ formData, updateFormData }) => {
   const [customDate, setCustomDate] = useState('');
 
   const deadlineOptions = [
-    { 
-      value: '1_day', 
-      label: '1 Day', 
+    {
+      value: '1_day',
+      label: '1 Day',
       description: 'Urgent - Need it tomorrow',
       icon: '🚨',
-      priceImpact: '+30% premium'
+      priceImpact: '+30% premium',
     },
-    { 
-      value: '2_days', 
-      label: '2 Days', 
+    {
+      value: '2_days',
+      label: '2 Days',
       description: 'Quick turnaround',
       icon: '⚡',
-      priceImpact: '+15% premium'
+      priceImpact: '+15% premium',
     },
-    { 
-      value: '3_days', 
-      label: '3 Days', 
+    {
+      value: '3_days',
+      label: '3 Days',
       description: 'Standard timeline',
       icon: '📅',
-      priceImpact: 'Standard pricing'
+      priceImpact: 'Standard pricing',
     },
-    { 
-      value: '1_week', 
-      label: '1 Week', 
+    {
+      value: '1_week',
+      label: '1 Week',
       description: 'Comfortable timeline',
       icon: '📆',
-      priceImpact: '-5% discount'
+      priceImpact: '-5% discount',
     },
-    { 
-      value: '2_weeks', 
-      label: '2 Weeks', 
+    {
+      value: '2_weeks',
+      label: '2 Weeks',
       description: 'Extended timeline',
       icon: '📊',
-      priceImpact: '-15% discount'
+      priceImpact: '-15% discount',
     },
-    { 
-      value: 'custom', 
-      label: 'Custom', 
+    {
+      value: 'custom',
+      label: 'Custom',
       description: 'Set your own deadline',
       icon: '🎯',
-      priceImpact: 'Variable'
+      priceImpact: 'Variable',
     },
   ];
 
@@ -120,8 +120,8 @@ const StepFour: React.FC<StepFourProps> = ({ formData, updateFormData }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
@@ -132,7 +132,7 @@ const StepFour: React.FC<StepFourProps> = ({ formData, updateFormData }) => {
       </View>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -152,7 +152,7 @@ const StepFour: React.FC<StepFourProps> = ({ formData, updateFormData }) => {
           <Text style={styles.subtitle}>
             Choose when you need the task completed
           </Text>
-          
+
           <View style={styles.deadlineOptions}>
             {deadlineOptions.map((option) => (
               <TouchableOpacity
@@ -217,7 +217,7 @@ const StepFour: React.FC<StepFourProps> = ({ formData, updateFormData }) => {
           <Text style={styles.subtitle}>
             Indicate how urgent this task is for you
           </Text>
-          
+
           <View style={styles.urgencyOptions}>
             {URGENCY_LEVELS.map((urgency) => (
               <TouchableOpacity
@@ -324,19 +324,19 @@ const StepFour: React.FC<StepFourProps> = ({ formData, updateFormData }) => {
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.modalBody}>
               <Text style={styles.modalSubtitle}>
                 Enter your custom deadline (e.g., "3 days", "1 week", "Dec 15")
               </Text>
-              
+
               <View style={styles.customDateInput}>
                 <Text style={styles.customDateLabel}>Custom Deadline:</Text>
                 <Text style={styles.customDateValue}>
                   {customDate || 'Enter deadline...'}
                 </Text>
               </View>
-              
+
               <TouchableOpacity
                 style={styles.submitButton}
                 onPress={handleCustomDateSubmit}
@@ -659,4 +659,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepFour; 
+export default StepFour;

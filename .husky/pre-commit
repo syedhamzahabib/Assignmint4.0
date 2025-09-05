@@ -1,0 +1,73 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Check for deletions in staged changes
+DELETIONS=$(git diff --cached --name-status | grep -c "^D" || true)
+
+if [ "$DELETIONS" -gt 0 ]; then
+    # Check if commit message contains ALLOW-DELETE
+    COMMIT_MSG=$(cat .git/COMMIT_EDITMSG 2>/dev/null || echo "")
+    if ! echo "$COMMIT_MSG" | grep -q "ALLOW-DELETE"; then
+        echo "❌ BLOCKED: Commit contains $DELETIONS file deletion(s)"
+        echo "💡 To allow deletions, include 'ALLOW-DELETE' in your commit message"
+        echo "📝 Example: git commit -m 'refactor: remove unused files ALLOW-DELETE'"
+        echo ""
+        echo "🔒 This is a safety measure to prevent accidental file deletions"
+        exit 1
+    else
+        echo "✅ Deletions allowed: Commit message contains 'ALLOW-DELETE'"
+    fi
+fi
+
+# Run existing validation scripts
+echo "🔍 Running validation scripts..."
+
+# Check entry point
+if npm run check:entry; then
+    echo "✅ Entry point check passed"
+else
+    echo "❌ Entry point check failed"
+    exit 1
+fi
+
+# Check SCREENS_MAP.md
+if npm run check:screens-map; then
+    echo "✅ SCREENS_MAP.md check passed"
+else
+    echo "❌ SCREENS_MAP.md check failed"
+    exit 1
+fi
+
+# Check for legacy files and emoji icons
+if node scripts/check-legacy.js; then
+    echo "✅ Legacy check passed"
+else
+    echo "❌ Legacy check failed"
+    exit 1
+fi
+
+# Validate screens
+if npm run validate:screens; then
+    echo "✅ Screen validation passed"
+else
+    echo "❌ Screen validation failed"
+    exit 1
+fi
+
+# Run linting
+if npm run lint -- --fix; then
+    echo "✅ Linting passed"
+else
+    echo "❌ Linting failed"
+    exit 1
+fi
+
+# Run type checking
+if npm run typecheck; then
+    echo "✅ Type checking passed"
+else
+    echo "❌ Type checking failed"
+    exit 1
+fi
+
+echo "✅ All pre-commit checks passed"

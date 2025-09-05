@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import AIService, { AIMessage, ChatSession, SubjectDetection } from '../services/AIService';
+import AIApiService, { AIMessage, ChatSession, SubjectDetection } from '../services/AIApiService';
 
 export interface UseAIChatReturn {
   // State
@@ -9,7 +9,7 @@ export interface UseAIChatReturn {
   explanationMode: boolean;
   chatSessions: ChatSession[];
   currentSessionId: string | null;
-  
+
   // Actions
   sendMessage: (text: string) => Promise<void>;
   processImage: (imageUri: string) => Promise<void>;
@@ -19,7 +19,7 @@ export interface UseAIChatReturn {
   deleteSession: (sessionId: string) => Promise<void>;
   clearChat: () => void;
   toggleExplanationMode: () => void;
-  
+
   // Utilities
   getConversationStats: () => { messageCount: number; subject: string; duration: number };
   detectSubject: (text: string) => Promise<SubjectDetection>;
@@ -39,8 +39,8 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
   const [explanationMode, setExplanationMode] = useState<boolean>(true);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  
-  const aiService = AIService.getInstance();
+
+  const aiService = new AIApiService();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Initialize chat sessions on mount
@@ -51,10 +51,10 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
   }, [userId]);
 
   const loadUserSessions = async () => {
-    if (!userId) return;
-    
+    if (!userId) {return;}
+
     try {
-      const sessions = await aiService.getUserSessions(userId);
+      const sessions = await aiService.getUserSessions();
       setChatSessions(sessions);
     } catch (error) {
       console.error('Error loading user sessions:', error);
@@ -62,20 +62,20 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
   };
 
   const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim()) {return;}
 
     // Cancel any ongoing request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     abortControllerRef.current = new AbortController();
 
     try {
       // Detect subject from user input
       const subjectDetection = await aiService.detectSubject(text);
       const detectedSubject = subjectDetection.subject;
-      
+
       const userMessage: AIMessage = {
         id: Date.now().toString(),
         text: text.trim(),
@@ -88,45 +88,39 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
       setCurrentSubject(detectedSubject);
       setIsTyping(true);
 
-      // Save message to service
-      await aiService.saveMessage(userMessage);
+      // Send message and get AI response
+      const chatResponse = await aiService.sendMessage(text, currentSessionId || undefined, explanationMode);
 
-      // Generate AI response
-      const aiResponse = await aiService.generateResponse(text, detectedSubject, explanationMode);
-      
       const aiMessage: AIMessage = {
-        id: (Date.now() + 1).toString(),
-        text: aiResponse,
+        id: chatResponse.aiMessage.id,
+        text: chatResponse.aiMessage.text,
         isUser: false,
-        timestamp: new Date(),
-        subject: detectedSubject,
+        timestamp: chatResponse.aiMessage.timestamp,
+        subject: chatResponse.aiMessage.subject,
       };
-      
+
       setMessages(prev => [...prev, aiMessage]);
-      
-      // Save AI message to service
-      await aiService.saveMessage(aiMessage);
-      
+
       // Update chat sessions if this is a new session
       if (!currentSessionId && userId) {
         await loadUserSessions();
       }
-      
+
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('Request was aborted');
         return;
       }
-      
+
       console.error('Error generating AI response:', error);
-      
+
       const errorMessage: AIMessage = {
         id: (Date.now() + 1).toString(),
         text: "I'm sorry, I'm having trouble processing your request right now. Please try again in a moment.",
         isUser: false,
         timestamp: new Date(),
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
@@ -136,39 +130,42 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
 
   const processImage = useCallback(async (imageUri: string) => {
     setIsTyping(true);
-    
+
     try {
       const ocrResult = await aiService.processImage(imageUri);
-      
+
       const imageMessage: AIMessage = {
         id: Date.now().toString(),
-        text: `I found this text in your image:\n\n"${ocrResult.text}"\n\n**Detected Subject:** ${ocrResult.subject}\n\nHow can I help you with this?`,
+        text: `I found this text in your image:\n\n"${ocrResult.ocrResult.text}"\n\n**Detected Subject:** ${ocrResult.ocrResult.subject}\n\nHow can I help you with this?`,
         isUser: false,
         timestamp: new Date(),
-        subject: ocrResult.subject,
+        subject: ocrResult.ocrResult.subject || 'General',
         attachments: [{
           type: 'image',
           uri: imageUri,
-          name: 'Uploaded Image'
-        }]
+          name: 'Uploaded Image',
+        }],
       };
-      
+
       setMessages(prev => [...prev, imageMessage]);
-      setCurrentSubject(ocrResult.subject || '');
-      
-      // Save to service
-      await aiService.saveMessage(imageMessage);
-      
+      setCurrentSubject(ocrResult.ocrResult.subject || '');
+
+      // Save to service if session exists
+      if (currentSessionId) {
+        // TODO: Implement image processing with backend
+        console.log('Image processing would be saved to session:', currentSessionId);
+      }
+
     } catch (error) {
       console.error('Error processing image:', error);
-      
+
       const errorMessage: AIMessage = {
         id: (Date.now() + 1).toString(),
         text: "I'm sorry, I couldn't process the image. Please try again or type your question directly.",
         isUser: false,
         timestamp: new Date(),
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
@@ -177,39 +174,42 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
 
   const processDocument = useCallback(async (documentUri: string, documentName: string) => {
     setIsTyping(true);
-    
+
     try {
       const documentAnalysis = await aiService.processDocument(documentUri, documentName);
-      
+
       const documentMessage: AIMessage = {
         id: Date.now().toString(),
-        text: `I've analyzed your document "${documentName}":\n\n**Subject:** ${documentAnalysis.subject}\n**Summary:** ${documentAnalysis.summary}\n\n**Key Topics:** ${documentAnalysis.topics.join(', ')}\n\n**Questions I can help with:**\n${documentAnalysis.questions.map(q => `• ${q}`).join('\n')}\n\nWhat would you like to know about this document?`,
+        text: `I've analyzed your document "${documentName}":\n\n**Subject:** ${documentAnalysis.documentAnalysis.subject}\n**Summary:** ${documentAnalysis.documentAnalysis.summary}\n\n**Key Topics:** ${documentAnalysis.documentAnalysis.topics.join(', ')}\n\n**Questions I can help with:**\n${documentAnalysis.documentAnalysis.questions.map((q: string) => `• ${q}`).join('\n')}\n\nWhat would you like to know about this document?`,
         isUser: false,
         timestamp: new Date(),
-        subject: documentAnalysis.subject,
+        subject: documentAnalysis.documentAnalysis.subject || 'General',
         attachments: [{
           type: 'pdf',
           uri: documentUri,
-          name: documentName
-        }]
+          name: documentName,
+        }],
       };
-      
+
       setMessages(prev => [...prev, documentMessage]);
-      setCurrentSubject(documentAnalysis.subject);
-      
-      // Save to service
-      await aiService.saveMessage(documentMessage);
-      
+      setCurrentSubject(documentAnalysis.documentAnalysis.subject);
+
+      // Save to service if session exists
+      if (currentSessionId) {
+        // TODO: Implement document processing with backend
+        console.log('Document processing would be saved to session:', currentSessionId);
+      }
+
     } catch (error) {
       console.error('Error processing document:', error);
-      
+
       const errorMessage: AIMessage = {
         id: (Date.now() + 1).toString(),
         text: "I'm sorry, I couldn't process the document. Please try again or type your question directly.",
         isUser: false,
         timestamp: new Date(),
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
@@ -218,9 +218,9 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
 
   const createNewChat = useCallback(async () => {
     try {
-      const sessionId = await aiService.createNewSession(userId);
+      const sessionId = await aiService.createNewSession();
       setCurrentSessionId(sessionId);
-      
+
       setMessages([{
         id: '1',
         text: "Hi! I'm your AI study assistant\n\nI can help you with:\n\n• **Subject Detection** - I'll automatically identify what you're studying\n• **Photo Analysis** - Take a picture of your assignment\n• **Document Upload** - Upload PDFs or images\n• **Smart Explanations** - Get help understanding concepts\n• **Memory & Context** - I remember our conversations\n\nWhat would you like help with today?",
@@ -228,7 +228,7 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
         timestamp: new Date(),
       }]);
       setCurrentSubject('');
-      
+
       // Refresh sessions list
       if (userId) {
         await loadUserSessions();
@@ -243,27 +243,27 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
       const sessionMessages = await aiService.loadSession(sessionId);
       setMessages(sessionMessages);
       setCurrentSessionId(sessionId);
-      
+
       // Find the most recent subject from messages
       const lastMessageWithSubject = sessionMessages
         .filter(msg => msg.subject)
         .pop();
-      
+
       if (lastMessageWithSubject) {
         setCurrentSubject(lastMessageWithSubject.subject!);
       }
-    } catch (error) {
-      console.error('Error loading session:', error);
+    } catch (implementation) {
+      console.error('Error loading session:', implementation);
     }
   }, []);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
       await aiService.deleteSession(sessionId);
-      
+
       // Remove from local state
       setChatSessions(prev => prev.filter(session => session.id !== sessionId));
-      
+
       // If this was the current session, create a new one
       if (sessionId === currentSessionId) {
         await createNewChat();
@@ -281,7 +281,7 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
       timestamp: new Date(),
     }]);
     setCurrentSubject('');
-    aiService.clearCurrentSession();
+    // Session will be cleared when creating new chat
     setCurrentSessionId(null);
   }, []);
 
@@ -290,11 +290,27 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
   }, []);
 
   const getConversationStats = useCallback(() => {
-    return aiService.getConversationStats();
-  }, []);
+    return {
+      messageCount: messages.length,
+      subject: currentSubject || 'General',
+      duration: messages.length > 0 ? 
+        Math.floor((messages[messages.length - 1].timestamp.getTime() - messages[0].timestamp.getTime()) / 1000) : 0
+    };
+  }, [messages, currentSubject]);
 
   const detectSubject = useCallback(async (text: string) => {
-    return await aiService.detectSubject(text);
+    try {
+      return await aiService.detectSubject(text);
+    } catch (error) {
+      console.error('Error detecting subject:', error);
+      // Return fallback subject detection
+      return {
+        subject: 'General',
+        confidence: 0.3,
+        topics: ['General Studies'],
+        keywords: [],
+      };
+    }
   }, []);
 
   // Cleanup on unmount
@@ -314,7 +330,7 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
     explanationMode,
     chatSessions,
     currentSessionId,
-    
+
     // Actions
     sendMessage,
     processImage,
@@ -324,7 +340,7 @@ export const useAIChat = (userId?: string): UseAIChatReturn => {
     deleteSession,
     clearChat,
     toggleExplanationMode,
-    
+
     // Utilities
     getConversationStats,
     detectSubject,

@@ -27,9 +27,17 @@
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-		<key>NSAllowsLocalNetworking</key>
 		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string/>
@@ -54,5 +62,22 @@
 		<string>FontAwesome.ttf</string>
 		<string>Feather.ttf</string>
 	</array>
+	<key>Config</key>
+	<dict>
+		<key>API_BASE_URL</key>
+		<string>http://localhost:3000</string>
+		<key>FIREBASE_API_KEY</key>
+		<string>AIzaSyC7zjDmADwt2dtakT0ZQJZmw4gk-49UpcU</string>
+		<key>FIREBASE_APP_ID</key>
+		<string>1:772572800538:ios:fdc940b189ae56b32013a3</string>
+		<key>FIREBASE_PROJECT_ID</key>
+		<string>assignimt</string>
+		<key>FIREBASE_AUTH_DOMAIN</key>
+		<string>assignimt.firebaseapp.com</string>
+		<key>FIREBASE_MESSAGING_SENDER_ID</key>
+		<string>772572800538</string>
+		<key>FIREBASE_STORAGE_BUCKET</key>
+		<string>assignimt.appspot.com</string>
+	</dict>
 </dict>
 </plist>

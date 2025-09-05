@@ -15,40 +15,40 @@ import { COLORS } from '../../constants';
 
 // Enhanced payment methods
 const PAYMENT_METHODS = [
-  { 
-    id: 'credit_card', 
-    label: '💳 Credit Card', 
+  {
+    id: 'credit_card',
+    label: '💳 Credit Card',
     value: 'credit_card',
     description: 'Visa, Mastercard, American Express',
-    icon: '💳'
+    icon: '💳',
   },
-  { 
-    id: 'debit_card', 
-    label: '💳 Debit Card', 
+  {
+    id: 'debit_card',
+    label: '💳 Debit Card',
     value: 'debit_card',
     description: 'Direct bank account payment',
-    icon: '💳'
+    icon: '💳',
   },
-  { 
-    id: 'paypal', 
-    label: 'PayPal', 
+  {
+    id: 'paypal',
+    label: 'PayPal',
     value: 'paypal',
     description: 'PayPal account or guest checkout',
-    icon: 'PayPal'
+    icon: 'PayPal',
   },
-  { 
-    id: 'apple_pay', 
-    label: 'Apple Pay', 
+  {
+    id: 'apple_pay',
+    label: 'Apple Pay',
     value: 'apple_pay',
     description: 'Quick and secure Apple Pay',
-    icon: '🍎'
+    icon: '🍎',
   },
-  { 
-    id: 'google_pay', 
-    label: 'Google Pay', 
+  {
+    id: 'google_pay',
+    label: 'Google Pay',
     value: 'google_pay',
     description: 'Fast Google Pay checkout',
-    icon: 'G'
+    icon: 'G',
   },
 ];
 
@@ -75,46 +75,46 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
   const [showReviewModal, setShowReviewModal] = useState(false);
 
   const budgetSuggestions = [
-    { 
-      value: '$25', 
-      label: 'Basic', 
+    {
+      value: '$25',
+      label: 'Basic',
       description: 'Simple tasks, quick turnaround',
       icon: '💰',
-      features: ['Basic quality', 'Standard delivery', 'Simple tasks']
+      features: ['Basic quality', 'Standard delivery', 'Simple tasks'],
     },
-    { 
-      value: '$50', 
-      label: 'Standard', 
+    {
+      value: '$50',
+      label: 'Standard',
       description: 'Most common tasks',
       icon: '💵',
-      features: ['Good quality', 'Reliable delivery', 'Most task types']
+      features: ['Good quality', 'Reliable delivery', 'Most task types'],
     },
-    { 
-      value: '$100', 
-      label: 'Premium', 
+    {
+      value: '$100',
+      label: 'Premium',
       description: 'Complex tasks, high quality',
       icon: '💎',
-      features: ['High quality', 'Fast delivery', 'Complex tasks']
+      features: ['High quality', 'Fast delivery', 'Complex tasks'],
     },
-    { 
-      value: '$150', 
-      label: 'Expert', 
+    {
+      value: '$150',
+      label: 'Expert',
       description: 'Specialized work, top experts',
       icon: '👑',
-      features: ['Expert quality', 'Priority delivery', 'Specialized work']
+      features: ['Expert quality', 'Priority delivery', 'Specialized work'],
     },
-    { 
-      value: 'custom', 
-      label: 'Custom', 
+    {
+      value: 'custom',
+      label: 'Custom',
       description: 'Set your own budget',
       icon: '🎯',
-      features: ['Flexible pricing', 'Custom requirements', 'Negotiable']
+      features: ['Flexible pricing', 'Custom requirements', 'Negotiable'],
     },
   ];
 
   const calculateEstimatedPrice = () => {
     let basePrice = 50; // Standard price
-    
+
     // Adjust based on AI level
     switch (formData.aiLevel) {
       case 'none': basePrice *= 1.0; break;
@@ -122,20 +122,20 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
       case 'enhanced': basePrice *= 0.8; break;
       case 'ai_heavy': basePrice *= 0.7; break;
     }
-    
+
     // Adjust based on urgency
     switch (formData.urgency) {
       case 'high': basePrice *= 1.2; break;
       case 'medium': basePrice *= 1.0; break;
       case 'low': basePrice *= 0.9; break;
     }
-    
+
     // Adjust based on deadline
-    if (formData.deadline === '1_day') basePrice *= 1.3;
-    else if (formData.deadline === '2_days') basePrice *= 1.15;
-    else if (formData.deadline === '1_week') basePrice *= 0.95;
-    else if (formData.deadline === '2_weeks') basePrice *= 0.85;
-    
+    if (formData.deadline === '1_day') {basePrice *= 1.3;}
+    else if (formData.deadline === '2_days') {basePrice *= 1.15;}
+    else if (formData.deadline === '1_week') {basePrice *= 0.95;}
+    else if (formData.deadline === '2_weeks') {basePrice *= 0.85;}
+
     return Math.round(basePrice);
   };
 
@@ -157,12 +157,12 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
       Alert.alert('Required Field', 'Please set a budget for your task.');
       return;
     }
-    
+
     if (!formData.paymentMethod) {
       Alert.alert('Required Field', 'Please select a payment method.');
       return;
     }
-    
+
     setShowReviewModal(true);
   };
 
@@ -172,8 +172,8 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
@@ -184,7 +184,7 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
       </View>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -204,7 +204,7 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
           <Text style={styles.subtitle}>
             Choose your budget range or set a custom amount
           </Text>
-          
+
           <View style={styles.budgetOptions}>
             {budgetSuggestions.map((option) => (
               <TouchableOpacity
@@ -281,7 +281,7 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
           <Text style={styles.subtitle}>
             Select your preferred payment method
           </Text>
-          
+
           <View style={styles.paymentOptions}>
             {PAYMENT_METHODS.map((method) => (
               <TouchableOpacity
@@ -357,12 +357,12 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.modalBody}>
               <Text style={styles.modalSubtitle}>
                 Enter your custom budget amount (minimum $10)
               </Text>
-              
+
               <View style={styles.customBudgetInput}>
                 <Text style={styles.customBudgetLabel}>Budget Amount:</Text>
                 <TextInput
@@ -375,7 +375,7 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
                   autoFocus
                 />
               </View>
-              
+
               <TouchableOpacity
                 style={styles.submitButton}
                 onPress={handleCustomBudgetSubmit}
@@ -405,7 +405,7 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.reviewContent}>
               <View style={styles.reviewSection}>
                 <Text style={styles.reviewSectionTitle}>📝 Task Details</Text>
@@ -413,7 +413,7 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
                 <Text style={styles.reviewField}>Title: {formData.title}</Text>
                 <Text style={styles.reviewField}>Description: {formData.description.substring(0, 100)}...</Text>
               </View>
-              
+
               <View style={styles.reviewSection}>
                 <Text style={styles.reviewSectionTitle}>🤖 AI Settings</Text>
                 <Text style={styles.reviewField}>AI Level: {formData.aiLevel}</Text>
@@ -421,20 +421,20 @@ const StepFive: React.FC<StepFiveProps> = ({ formData, updateFormData, onSubmit 
                   <Text style={styles.reviewField}>AI Percentage: {formData.aiPercentage}%</Text>
                 )}
               </View>
-              
+
               <View style={styles.reviewSection}>
                 <Text style={styles.reviewSectionTitle}>⏰ Timeline</Text>
                 <Text style={styles.reviewField}>Deadline: {formData.deadline}</Text>
                 <Text style={styles.reviewField}>Urgency: {formData.urgency}</Text>
               </View>
-              
+
               <View style={styles.reviewSection}>
                 <Text style={styles.reviewSectionTitle}>💰 Payment</Text>
                 <Text style={styles.reviewField}>Budget: {formData.budget}</Text>
                 <Text style={styles.reviewField}>Payment: {formData.paymentMethod}</Text>
               </View>
             </ScrollView>
-            
+
             <View style={styles.reviewActions}>
               <TouchableOpacity
                 style={styles.cancelButton}
@@ -800,4 +800,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepFive; 
+export default StepFive;

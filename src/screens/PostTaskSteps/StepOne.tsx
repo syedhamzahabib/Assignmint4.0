@@ -30,21 +30,21 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
   const enhancedSubjects = [
     // Other (Customized) - Moved to top for easy access
     { id: 'custom', label: '📝 Other (customized)', value: 'custom', description: 'Specify a custom subject' },
-    
+
     // Core Academic Subjects
     { id: 'mathematics', label: '📐 Mathematics', value: 'Mathematics', description: 'General math, algebra, calculus, statistics' },
     { id: 'calculus', label: '📊 Calculus', value: 'Calculus', description: 'Differential and integral calculus' },
     { id: 'algebra', label: '🔢 Algebra', value: 'Algebra', description: 'Linear algebra, abstract algebra' },
     { id: 'statistics', label: '📈 Statistics', value: 'Statistics', description: 'Probability, data analysis, statistical methods' },
     { id: 'geometry', label: '📐 Geometry', value: 'Geometry', description: 'Euclidean geometry, trigonometry' },
-    
+
     // Sciences
     { id: 'physics', label: '⚡ Physics', value: 'Physics', description: 'Mechanics, thermodynamics, electromagnetism' },
     { id: 'chemistry', label: '🧪 Chemistry', value: 'Chemistry', description: 'Organic, inorganic, physical chemistry' },
     { id: 'biology', label: '🧬 Biology', value: 'Biology', description: 'Cell biology, genetics, ecology' },
     { id: 'anatomy', label: '🫀 Anatomy', value: 'Anatomy', description: 'Human anatomy and physiology' },
     { id: 'microbiology', label: '🦠 Microbiology', value: 'Microbiology', description: 'Bacteria, viruses, microorganisms' },
-    
+
     // Computer Science & Programming
     { id: 'programming', label: '💻 Programming', value: 'Programming', description: 'General programming concepts' },
     { id: 'python', label: '🐍 Python', value: 'Python', description: 'Python programming language' },
@@ -57,7 +57,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
     { id: 'mobile_development', label: '📱 Mobile Development', value: 'Mobile Development', description: 'iOS, Android app development' },
     { id: 'data_science', label: '📊 Data Science', value: 'Data Science', description: 'Machine learning, data analysis' },
     { id: 'artificial_intelligence', label: '🤖 AI/ML', value: 'AI/ML', description: 'Artificial intelligence and machine learning' },
-    
+
     // Languages & Literature
     { id: 'english', label: '📚 English', value: 'English', description: 'English literature and composition' },
     { id: 'spanish', label: '🇪🇸 Spanish', value: 'Spanish', description: 'Spanish language and literature' },
@@ -68,7 +68,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
     { id: 'latin', label: '🏛️ Latin', value: 'Latin', description: 'Latin language and classical studies' },
     { id: 'creative_writing', label: '✍️ Creative Writing', value: 'Creative Writing', description: 'Fiction, poetry, creative essays' },
     { id: 'technical_writing', label: '📝 Technical Writing', value: 'Technical Writing', description: 'Technical documentation and reports' },
-    
+
     // Business & Economics
     { id: 'business', label: '💼 Business', value: 'Business', description: 'General business studies' },
     { id: 'accounting', label: '💰 Accounting', value: 'Accounting', description: 'Financial accounting and bookkeeping' },
@@ -76,7 +76,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
     { id: 'economics', label: '📈 Economics', value: 'Economics', description: 'Microeconomics, macroeconomics' },
     { id: 'marketing', label: '📢 Marketing', value: 'Marketing', description: 'Digital marketing, market research' },
     { id: 'management', label: '👥 Management', value: 'Management', description: 'Business management and leadership' },
-    
+
     // Social Sciences
     { id: 'psychology', label: '🧠 Psychology', value: 'Psychology', description: 'Clinical, cognitive, social psychology' },
     { id: 'sociology', label: '👥 Sociology', value: 'Sociology', description: 'Social behavior and society' },
@@ -84,7 +84,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
     { id: 'history', label: '📜 History', value: 'History', description: 'World history, American history' },
     { id: 'geography', label: '🌍 Geography', value: 'Geography', description: 'Physical and human geography' },
     { id: 'anthropology', label: '🏺 Anthropology', value: 'Anthropology', description: 'Cultural and physical anthropology' },
-    
+
     // Engineering
     { id: 'engineering', label: '⚙️ Engineering', value: 'Engineering', description: 'General engineering principles' },
     { id: 'mechanical_engineering', label: '🔧 Mechanical Engineering', value: 'Mechanical Engineering', description: 'Mechanical systems and design' },
@@ -92,31 +92,31 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
     { id: 'civil_engineering', label: '🏗️ Civil Engineering', value: 'Civil Engineering', description: 'Infrastructure and construction' },
     { id: 'chemical_engineering', label: '🧪 Chemical Engineering', value: 'Chemical Engineering', description: 'Chemical processes and reactions' },
     { id: 'computer_engineering', label: '💻 Computer Engineering', value: 'Computer Engineering', description: 'Hardware and software systems' },
-    
+
     // Health & Medicine
     { id: 'nursing', label: '🏥 Nursing', value: 'Nursing', description: 'Nursing practice and theory' },
     { id: 'pharmacy', label: '💊 Pharmacy', value: 'Pharmacy', description: 'Pharmaceutical studies' },
     { id: 'nutrition', label: '🥗 Nutrition', value: 'Nutrition', description: 'Dietetics and nutrition science' },
     { id: 'public_health', label: '🏥 Public Health', value: 'Public Health', description: 'Epidemiology and health policy' },
-    
+
     // Arts & Design
     { id: 'art', label: '🎨 Art', value: 'Art', description: 'Fine arts and art history' },
     { id: 'design', label: '🎨 Design', value: 'Design', description: 'Graphic design and visual arts' },
     { id: 'architecture', label: '🏛️ Architecture', value: 'Architecture', description: 'Architectural design and theory' },
     { id: 'music', label: '🎵 Music', value: 'Music', description: 'Music theory and composition' },
     { id: 'film', label: '🎬 Film', value: 'Film', description: 'Film studies and production' },
-    
+
     // Law & Criminal Justice
     { id: 'law', label: '⚖️ Law', value: 'Law', description: 'Legal studies and jurisprudence' },
     { id: 'criminal_justice', label: '👮 Criminal Justice', value: 'Criminal Justice', description: 'Criminal law and justice system' },
-    
+
     // Education
     { id: 'education', label: '📚 Education', value: 'Education', description: 'Teaching and educational theory' },
     { id: 'special_education', label: '🎓 Special Education', value: 'Special Education', description: 'Special needs education' },
-    
+
     // Environmental Studies
     { id: 'environmental_science', label: '🌱 Environmental Science', value: 'Environmental Science', description: 'Environmental studies and sustainability' },
-    { id: 'sustainability', label: '♻️ Sustainability', value: 'Sustainability', description: 'Sustainable development and practices' }
+    { id: 'sustainability', label: '♻️ Sustainability', value: 'Sustainability', description: 'Sustainable development and practices' },
   ];
 
   // Filter subjects based on search
@@ -147,27 +147,27 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
 
   const handleNext = () => {
     const errors: {[key: string]: string} = {};
-    
+
     if (!taskTitle.trim()) {
       errors.taskTitle = 'Task title is required';
     }
-    
+
     if (!selectedSubject) {
       errors.selectedSubject = 'Subject is required';
     } else if (selectedSubject === 'custom' && !customSubject.trim()) {
       errors.customSubject = 'Please specify your custom subject';
     }
-    
+
     if (!selectedUrgency) {
       errors.selectedUrgency = 'Urgency level is required';
     }
-    
+
     if (isForStudent === null) {
       errors.isForStudent = 'Please select if this is for a student';
     }
-    
+
     setValidationErrors(errors);
-    
+
     if (Object.keys(errors).length === 0) {
       const finalSubject = selectedSubject === 'custom' ? customSubject : selectedSubject;
       navigation.navigate('StepTwo', {
@@ -179,21 +179,21 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
     }
   };
 
-  const isFormValid = taskTitle.trim() && 
-    (selectedSubject === 'custom' ? customSubject.trim() : selectedSubject) && 
-    selectedUrgency && 
+  const isFormValid = taskTitle.trim() &&
+    (selectedSubject === 'custom' ? customSubject.trim() : selectedSubject) &&
+    selectedUrgency &&
     isForStudent !== null;
 
   const getBudgetHint = () => {
-    if (!selectedUrgency) return null;
-    
+    if (!selectedUrgency) {return null;}
+
     switch (selectedUrgency) {
       case 'high':
-        return "💡 Faster deadlines often require higher budget to attract expert help. Consider $50+ for urgent tasks.";
+        return '💡 Faster deadlines often require higher budget to attract expert help. Consider $50+ for urgent tasks.';
       case 'medium':
-        return "💡 Medium priority tasks typically work well with $30-70 budgets.";
+        return '💡 Medium priority tasks typically work well with $30-70 budgets.';
       case 'low':
-        return "💡 Flexible deadlines allow for more competitive pricing. $20-50 is often sufficient.";
+        return '💡 Flexible deadlines allow for more competitive pricing. $20-50 is often sufficient.';
       default:
         return null;
     }
@@ -201,7 +201,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
@@ -237,7 +237,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
             <TextInput
               style={[
                 styles.titleInput,
-                validationErrors.taskTitle && styles.inputError
+                validationErrors.taskTitle && styles.inputError,
               ]}
               placeholder="e.g., Help with calculus homework"
               placeholderTextColor={COLORS.textSecondary}
@@ -249,6 +249,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
                 }
               }}
               maxLength={100}
+              testID="post.title"
             />
             <Text style={styles.characterCount}>{taskTitle.length}/100</Text>
             {validationErrors.taskTitle && (
@@ -260,12 +261,12 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Subject</Text>
             <Text style={styles.sectionSubtitle}>Choose the academic subject</Text>
-            
+
             <TouchableOpacity
               style={[
                 styles.subjectPicker,
                 selectedSubject && styles.subjectPickerSelected,
-                validationErrors.selectedSubject && styles.inputError
+                validationErrors.selectedSubject && styles.inputError,
               ]}
               onPress={() => {
                 try {
@@ -278,6 +279,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
                   console.error('Error opening subject picker:', error);
                 }
               }}
+              testID="post.subject"
             >
               {selectedSubject ? (
                 <View>
@@ -300,7 +302,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
                 <TextInput
                   style={[
                     styles.customSubjectInput,
-                    validationErrors.customSubject && styles.inputError
+                    validationErrors.customSubject && styles.inputError,
                   ]}
                   placeholder="Type your custom subject..."
                   placeholderTextColor={COLORS.textSecondary}
@@ -317,7 +319,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
                 )}
               </View>
             )}
-            
+
             {validationErrors.selectedSubject && (
               <Text style={styles.errorText}>{validationErrors.selectedSubject}</Text>
             )}
@@ -351,11 +353,11 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
                 </TouchableOpacity>
               ))}
             </View>
-            
+
             {validationErrors.selectedUrgency && (
               <Text style={styles.errorText}>{validationErrors.selectedUrgency}</Text>
             )}
-            
+
             {/* Budget Hint */}
             {getBudgetHint() && (
               <View style={styles.budgetHintContainer}>
@@ -398,7 +400,7 @@ const StepOne: React.FC<StepOneProps> = ({ navigation, route }) => {
                 <Text style={styles.radioLabel}>No, I'm not a student</Text>
               </TouchableOpacity>
             </View>
-            
+
             {validationErrors.isForStudent && (
               <Text style={styles.errorText}>{validationErrors.isForStudent}</Text>
             )}
@@ -829,4 +831,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepOne; 
+export default StepOne;

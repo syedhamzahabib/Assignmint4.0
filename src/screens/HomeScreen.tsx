@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,38 +7,137 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants';
 import Icon, { Icons } from '../components/common/Icon';
+import { useAuth } from '../state/AuthProvider';
+import { GuestModeBanner } from '../components/common/GuestModeBanner';
+import { taskService } from '../services/taskService';
+import { Task } from '../types';
+import API from '../lib/api';
+import Config from 'react-native-config';
+import session from '../lib/session';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { user, logout, mode, isGuestMode } = useAuth();
 
   const handleAccept = () => {
     Alert.alert('Accept', 'Task accepted!');
   };
 
   const handleNegotiate = () => {
-    navigation.navigate('ChatThread', { 
-      chat: { 
-        id: '1', 
-        name: 'John Smith', 
-        taskTitle: 'Graphic Design Task' 
-      } 
+    navigation.navigate('ChatThread', {
+      chat: {
+        id: '1',
+        name: 'John Smith',
+        taskTitle: 'Graphic Design Task',
+      },
     });
   };
 
   const handleBestDeal = () => {
-    navigation.navigate('TaskDetails', { taskId: '1' });
+    navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: '1' } });
   };
 
   const handleViewTask = () => {
-    navigation.navigate('TaskDetails', { taskId: '1' });
+    navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: '1' } });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
+  };
+
+  // Dev sign-in and load tasks
+  useEffect(() => {
+    console.log('📡 Loading tasks from API');
+    console.log('🔧 API_BASE_URL:', Config.API_BASE_URL);
+    
+    const initializeApp = async () => {
+      try {
+        // Dev sign-in (replace with real auth flow later)
+        const currentUser = session.getCurrentUser();
+        if (!currentUser) {
+          console.log('🔐 Attempting dev sign-in...');
+          await session.signIn('dev@assignmint.com', 'devpassword123');
+        }
+        
+        // Load tasks
+        const response = await API.getTasks();
+        console.log('📡 API response:', response);
+        setTasks(response.tasks || []);
+        setLoading(false);
+        setRefreshing(false);
+      } catch (error) {
+        console.error('❌ Error initializing app:', error);
+        setLoading(false);
+        setRefreshing(false);
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const response = await API.getTasks();
+      setTasks(response.tasks || []);
+    } catch (error) {
+      console.error('❌ Error refreshing tasks:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const formatDate = (date: Date | string) => {
+    if (typeof date === 'string') {
+      return new Date(date).toLocaleDateString();
+    }
+    return date.toLocaleDateString();
+  };
+
+  const formatPrice = (price: number) => {
+    return `$${price.toFixed(0)}`;
+  };
+
+  const getAILevelText = (level: number) => {
+    if (level >= 70) return 'High';
+    if (level >= 40) return 'Medium';
+    return 'Low';
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container}>
+      {/* Debug Proof - Auth Mode and User Info */}
+      <View style={styles.userProofContainer}>
+        <Text style={styles.userProofText} testID="auth-mode">
+          Mode: {mode || 'None'} | {isGuestMode ? 'Guest Mode' : user?.email || 'No user'}
+        </Text>
+      </View>
+
+      {/* Guest Mode Banner */}
+      <GuestModeBanner
+        onSignIn={() => {
+          // Navigate to auth flow
+          // This will be handled by the navigation structure
+        }}
+        onDismiss={() => {
+          // Could implement dismiss logic here
+        }}
+      />
+
       {/* Top Navigation Bar */}
       <View style={styles.topBar}>
         <View style={styles.searchContainer}>
@@ -51,188 +150,150 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerButton}
             onPress={() => navigation.navigate('Notifications')}
           >
             <Icon name={Icons.notifications} size={20} color={COLORS.text} />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerButton}
             onPress={() => navigation.navigate('Messages')}
           >
             <Icon name={Icons.messages} size={20} color={COLORS.text} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleLogout}
+          >
+            <Icon name={Icons.logout} size={20} color={COLORS.text} />
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Feed Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.feedContainer}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.feedContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        testID="tab.home"
       >
-        {/* First Task Card */}
-        <TouchableOpacity style={styles.taskCard} onPress={handleViewTask}>
-          <View style={styles.userHeader}>
-            <View style={styles.userInfo}>
-              <View style={styles.avatarPlaceholder}>
-                <Icon name={Icons.user} size={24} color={COLORS.textSecondary} />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Loading tasks...</Text>
+          </View>
+        ) : tasks.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Icon name={Icons.search} size={48} color={COLORS.textSecondary} />
+            <Text style={styles.emptyTitle}>No tasks available</Text>
+            <Text style={styles.emptyText}>Check back later for new opportunities!</Text>
+          </View>
+        ) : (
+          tasks.map((task) => (
+            <TouchableOpacity
+              key={task.taskId}
+              style={styles.taskCard}
+              onPress={() => navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: task.taskId } })}
+            >
+              <View style={styles.userHeader}>
+                <View style={styles.userInfo}>
+                  <View style={styles.avatarPlaceholder}>
+                    <Icon name={Icons.user} size={24} color={COLORS.textSecondary} />
+                  </View>
+                  <View style={styles.userDetails}>
+                    <Text style={styles.userName}>{task.ownerName}</Text>
+                    <Text style={styles.taskType}>offering {task.subject} Task</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.userDetails}>
-                <Text style={styles.userName}>John Smith</Text>
-                <Text style={styles.taskType}>offering Graphic Design Task</Text>
+
+              <View style={styles.subjectBadge}>
+                <Text style={styles.subjectBadgeText}>{task.subject}</Text>
               </View>
-            </View>
-          </View>
 
-          <View style={styles.subjectBadge}>
-            <Text style={styles.subjectBadgeText}>Graphic Design</Text>
-          </View>
+              <Text style={styles.taskTitle}>{task.title}</Text>
 
-          <Text style={styles.taskDescription}>
-            A detailed description of the graphic design assignment that requires creativity and proficiency in Adobe Photoshop and Illustrator.
-          </Text>
+              {task.description && (
+                <Text style={styles.taskDescription} numberOfLines={3}>
+                  {task.description}
+                </Text>
+              )}
 
-          <View style={styles.previewImageContainer}>
-            <View style={styles.previewImagePlaceholder}>
-              <Icon name={Icons.image} size={32} color={COLORS.textSecondary} />
-              <Text style={styles.previewImageLabel}>Preview Image</Text>
-            </View>
-          </View>
-
-          <View style={styles.taskDetails}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Budget:</Text>
-              <Text style={styles.detailValue}>$500</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Deadline:</Text>
-              <Text style={styles.detailValue}>10/31/2023</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>AI Assistance:</Text>
-              <Text style={styles.detailValue}>High</Text>
-            </View>
-          </View>
-
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.acceptButton]}
-              onPress={handleAccept}
-            >
-              <Text style={styles.acceptButtonText}>Accept</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.negotiateButton]}
-              onPress={handleNegotiate}
-            >
-              <Text style={styles.negotiateButtonText}>Negotiate</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.bestDealButton]}
-              onPress={handleBestDeal}
-            >
-              <Text style={styles.bestDealButtonText}>Best Deal</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.socialButtons}>
-            <TouchableOpacity style={styles.socialButton}>
-              <Icon name={Icons.like} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.socialText}>Like</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-              <Icon name={Icons.messages} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.socialText}>Comment</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-              <Icon name={Icons.share} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.socialText}>Share</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-
-        {/* Second Task Card */}
-        <TouchableOpacity style={styles.taskCard} onPress={handleViewTask}>
-          <View style={styles.userHeader}>
-            <View style={styles.userInfo}>
-              <View style={styles.avatarPlaceholder}>
-                <Icon name={Icons.user} size={24} color={COLORS.textSecondary} />
+              <View style={styles.taskDetails}>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Budget:</Text>
+                  <Text style={styles.detailValue}>{formatPrice(task.price)}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Deadline:</Text>
+                  <Text style={styles.detailValue}>{formatDate(task.deadlineISO)}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>AI Assistance:</Text>
+                  <Text style={styles.detailValue}>{getAILevelText(task.aiLevel || 50)}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Urgency:</Text>
+                  <Text style={[styles.detailValue, { 
+                    color: task.urgency === 'high' ? '#FF6B6B' : 
+                           task.urgency === 'medium' ? '#FFB366' : '#4ECDC4' 
+                  }]}>
+                    {task.urgency.charAt(0).toUpperCase() + task.urgency.slice(1)}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.userDetails}>
-                <Text style={styles.userName}>Emily Davis</Text>
-                <Text style={styles.taskType}>offering Content writing Task</Text>
+
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.acceptButton]}
+                                            onPress={(e) => {
+                            e.stopPropagation();
+                            handleAccept();
+                          }}
+                        >
+                          <Text style={styles.acceptButtonText}>Accept</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.negotiateButton]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleNegotiate();
+                          }}
+                        >
+                          <Text style={styles.negotiateButtonText}>Negotiate</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.bestDealButton]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: task.taskId } });
+                          }}
+                        >
+                          <Text style={styles.bestDealButtonText}>View Details</Text>
+                        </TouchableOpacity>
               </View>
-            </View>
-          </View>
 
-          <View style={styles.subjectBadge}>
-            <Text style={styles.subjectBadgeText}>Content writing</Text>
-          </View>
-
-          <Text style={styles.taskDescription}>
-            Create engaging content for a tech blog that covers the latest trends in artificial intelligence and machine learning.
-          </Text>
-
-          <View style={styles.previewImageContainer}>
-            <View style={styles.previewImagePlaceholder}>
-              <Icon name={Icons.image} size={32} color={COLORS.textSecondary} />
-              <Text style={styles.previewImageLabel}>Preview Image</Text>
-            </View>
-          </View>
-
-          <View style={styles.taskDetails}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Budget:</Text>
-              <Text style={styles.detailValue}>$300</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Deadline:</Text>
-              <Text style={styles.detailValue}>11/15/2023</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>AI Assistance:</Text>
-              <Text style={styles.detailValue}>Medium</Text>
-            </View>
-          </View>
-
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.acceptButton]}
-              onPress={handleAccept}
-            >
-              <Text style={styles.acceptButtonText}>Accept</Text>
+              <View style={styles.socialButtons}>
+                <TouchableOpacity style={styles.socialButton}>
+                  <Icon name={Icons.like} size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.socialText}>Like</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.socialButton}>
+                  <Icon name={Icons.messages} size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.socialText}>Comment</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.socialButton}>
+                  <Icon name={Icons.share} size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.socialText}>Share</Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.negotiateButton]}
-              onPress={handleNegotiate}
-            >
-              <Text style={styles.negotiateButtonText}>Negotiate</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.bestDealButton]}
-              onPress={handleBestDeal}
-            >
-              <Text style={styles.bestDealButtonText}>Best Deal</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.socialButtons}>
-            <TouchableOpacity style={styles.socialButton}>
-              <Icon name={Icons.like} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.socialText}>Like</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-              <Icon name={Icons.messages} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.socialText}>Comment</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-              <Icon name={Icons.share} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.socialText}>Share</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -242,6 +303,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
+  },
+  userProofContainer: {
+    backgroundColor: '#F0F0F0',
+    padding: 8,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  userProofText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
   },
   topBar: {
     flexDirection: 'row',
@@ -449,6 +522,41 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontWeight: '500',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 8,
+  },
 });
 
-export default HomeScreen; 
+export default HomeScreen;

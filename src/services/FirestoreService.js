@@ -1,23 +1,5 @@
 // services/FirestoreService.js - Simplified with Mock Data Support
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  onSnapshot,
-  serverTimestamp,
-  increment,
-  writeBatch,
-  runTransaction
-} from 'firebase/firestore';
-import { db, getFirebaseStatus } from '../config/firebase';
+import firestore from '@react-native-firebase/firestore';
 
 // Mock data for development
 const mockTasks = [
@@ -126,7 +108,7 @@ class FirestoreService {
     // Check if we're using mock Firebase
     // Handle case where db might not be initialized yet
     const firebaseStatus = getFirebaseStatus();
-    this.isMocked = firebaseStatus.isMocked || db?._type === 'mock-firestore';
+    this.isMocked = firebaseStatus.isMocked || firestore?._type === 'mock-firestore';
     console.log(`🔧 FirestoreService initialized - Mocked: ${this.isMocked}`);
   }
 
@@ -204,43 +186,41 @@ class FirestoreService {
       }
 
       // Real Firebase implementation
-      let q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true)
-      );
+      let q = firestore().collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true);
 
       // Apply filters
       if (filters.subject && filters.subject !== 'all') {
-        q = query(q, where('subject', '==', filters.subject));
+        q = q.where('subject', '==', filters.subject);
       }
       
       if (filters.urgency && filters.urgency !== 'all') {
-        q = query(q, where('urgency', '==', filters.urgency));
+        q = q.where('urgency', '==', filters.urgency);
       }
 
       // Apply sorting
       switch (filters.sortBy) {
         case 'price_desc':
-          q = query(q, orderBy('budgetAmount', 'desc'));
+          q = q.orderBy('budgetAmount', 'desc');
           break;
         case 'price_asc':
-          q = query(q, orderBy('budgetAmount', 'asc'));
+          q = q.orderBy('budgetAmount', 'asc');
           break;
         case 'deadline_asc':
-          q = query(q, orderBy('deadline', 'asc'));
+          q = q.orderBy('deadline', 'asc');
           break;
         case 'recent':
         default:
-          q = query(q, orderBy('createdAt', 'desc'));
+          q = q.orderBy('createdAt', 'desc');
           break;
       }
 
       // Apply limit
-      q = query(q, limit(filters.limit || 20));
+      q = q.limit(filters.limit || 20);
 
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const tasks = [];
 
       querySnapshot.forEach((doc) => {
@@ -317,26 +297,24 @@ class FirestoreService {
       }
 
       // Real Firebase implementation
-      let q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true)
-      );
+      let q = firestore().collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true);
 
       // Apply filters
       if (filters.subject && filters.subject !== 'all') {
-        q = query(q, where('subject', '==', filters.subject));
+        q = q.where('subject', '==', filters.subject);
       }
       
       if (filters.urgency && filters.urgency !== 'all') {
-        q = query(q, where('urgency', '==', filters.urgency));
+        q = q.where('urgency', '==', filters.urgency);
       }
 
       // Apply sorting
-      q = query(q, orderBy('createdAt', 'desc'), limit(filters.limit || 20));
+      q = q.orderBy('createdAt', 'desc').limit(filters.limit || 20);
 
-      const unsubscribe = onSnapshot(q,
+      const unsubscribe = q.onSnapshot(
         (querySnapshot) => {
           this.notifyConnectionStatus(true);
 
@@ -412,16 +390,14 @@ class FirestoreService {
       }
 
       // Real Firebase implementation
-      const q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where('matchingType', '==', 'manual'),
-        where('status', '==', 'awaiting_expert'),
-        where('isActive', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
+      const q = firestore().collection(this.COLLECTIONS.TASKS)
+        .where('matchingType', '==', 'manual')
+        .where('status', '==', 'awaiting_expert')
+        .where('isActive', '==', true)
+        .orderBy('createdAt', 'desc')
+        .limit(20);
 
-      const unsubscribe = onSnapshot(q,
+      const unsubscribe = q.onSnapshot(
         (querySnapshot) => {
           this.notifyConnectionStatus(true);
 
@@ -507,11 +483,11 @@ class FirestoreService {
       }
 
       // Real Firebase implementation
-      return await runTransaction(db, async (transaction) => {
-        const taskRef = doc(db, this.COLLECTIONS.TASKS, taskId);
+      return await firestore().runTransaction(async (transaction) => {
+        const taskRef = firestore().collection(this.COLLECTIONS.TASKS).doc(taskId);
         const taskDoc = await transaction.get(taskRef);
         
-        if (!taskDoc.exists()) {
+        if (!taskDoc.exists) {
           throw new Error('Task not found');
         }
         
@@ -531,15 +507,15 @@ class FirestoreService {
           status: 'working', // Use 'working' status for expert view
           assignedExpertId: expertId,
           assignedExpertName: expertName,
-          assignedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          assignedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
           isActive: false, // Remove from public feed
         };
         
         transaction.update(taskRef, updateData);
         
         // Create notification for requester
-        const notificationRef = doc(collection(db, this.COLLECTIONS.NOTIFICATIONS));
+        const notificationRef = firestore().collection(this.COLLECTIONS.NOTIFICATIONS).doc();
         transaction.set(notificationRef, {
           userId: taskData.requesterId,
           type: 'task_accepted',
@@ -548,7 +524,7 @@ class FirestoreService {
           taskId: taskId,
           expertId: expertId,
           expertName: expertName,
-          createdAt: serverTimestamp(),
+          createdAt: firestore.FieldValue.serverTimestamp(),
           read: false
         });
         
@@ -583,14 +559,12 @@ class FirestoreService {
       }
 
       // Real Firebase implementation
-      const q = query(
-        collection(db, this.COLLECTIONS.NOTIFICATIONS),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc'),
-        limit(limit)
-      );
+      const q = firestore().collection(this.COLLECTIONS.NOTIFICATIONS)
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .limit(limit);
       
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const notifications = [];
       
       querySnapshot.forEach((doc) => {
@@ -642,12 +616,10 @@ class FirestoreService {
       // Real Firebase implementation
       const fieldName = role === 'requester' ? 'requesterId' : 'assignedExpertId';
       
-      const q = query(
-        collection(db, this.COLLECTIONS.TASKS),
-        where(fieldName, '==', userId)
-      );
+      const q = firestore().collection(this.COLLECTIONS.TASKS)
+        .where(fieldName, '==', userId);
       
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await q.get();
       const stats = {
         total: 0,
         active: 0,

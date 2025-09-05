@@ -17,30 +17,25 @@ export type HomeStackParamList = {
     taskId: string;
     task?: any;
   };
-  Chat: {
-    taskId: string;
-    task?: any;
+  ChatThread: {
+    chat: {
+      id: string;
+      name: string;
+      taskTitle: string;
+    };
   };
+  Notifications: undefined;
+  Messages: undefined;
+  NavigationTest: undefined;
 };
 
 // Post Stack ParamList
 export type PostStackParamList = {
   Post: undefined;
-  PostStep1: undefined;
-  PostStep2: {
-    taskData: any;
-  };
-  PostStep3: {
-    taskData: any;
-  };
-  PostStep4: {
-    taskData: any;
-  };
-  PostStep5: {
-    taskData: any;
-  };
-  PostReview: {
-    taskData: any;
+  TaskPostedConfirmation: {
+    taskTitle: string;
+    budget: string;
+    matchingPreference: string;
   };
 };
 
@@ -55,9 +50,12 @@ export type TasksStackParamList = {
     taskId: string;
     task?: any;
   };
-  Chat: {
-    taskId: string;
-    task?: any;
+  ChatThread: {
+    chat: {
+      id: string;
+      name: string;
+      taskTitle: string;
+    };
   };
 };
 
@@ -88,6 +86,7 @@ export type ProfileStackParamList = {
   PrivacyPolicy: undefined;
   AIAssistant: undefined;
   Analytics: undefined;
+  IconTest: undefined;
 };
 
 // Main Tabs ParamList
@@ -112,12 +111,12 @@ export type ScreenCatalogParamList = {
 };
 
 // Combined ParamList for type safety
-export type AppParamList = RootStackParamList & 
-  AuthStackParamList & 
-  HomeStackParamList & 
-  PostStackParamList & 
-  TasksStackParamList & 
-  AIStackParamList & 
+export type AppParamList = RootStackParamList &
+  AuthStackParamList &
+  HomeStackParamList &
+  PostStackParamList &
+  TasksStackParamList &
+  AIStackParamList &
   ProfileStackParamList &
   ScreenCatalogParamList;
 
@@ -137,32 +136,40 @@ export const ROUTES = {
   LOGIN: 'Login',
   FORGOT_PASSWORD: 'ForgotPassword',
   SIGN_UP_PAYMENT: 'SignUpPayment',
-  
+
   // Main Tabs
   MAIN_TABS: 'MainTabs',
-  
+
   // Home Stack
   HOME: 'Home',
   TASK_DETAILS: 'TaskDetails',
-  CHAT: 'Chat',
-  
+  CHAT_THREAD: 'ChatThread',
+  NOTIFICATIONS: 'Notifications',
+  MESSAGES: 'Messages',
+  NAVIGATION_TEST: 'NavigationTest',
+
   // Post Stack
   POST: 'Post',
-  POST_STEP_1: 'PostStep1',
-  POST_STEP_2: 'PostStep2',
-  POST_STEP_3: 'PostStep3',
-  POST_STEP_4: 'PostStep4',
-  POST_STEP_5: 'PostStep5',
-  POST_REVIEW: 'PostReview',
-  
+  TASK_POSTED_CONFIRMATION: 'TaskPostedConfirmation',
+
   // Tasks Stack
   TASKS: 'Tasks',
   UPLOAD_DELIVERY: 'UploadDelivery',
-  
+
   // AI Stack
   AI: 'AI',
   AI_ASSISTANT: 'AIAssistant',
-  
+
+  // Legacy routes (for backward compatibility)
+  CHAT: 'ChatThread',
+  MY_TASKS: 'Tasks',
+  POST_STEP_1: 'Post',
+  POST_STEP_2: 'Post',
+  POST_STEP_3: 'Post',
+  POST_STEP_4: 'Post',
+  POST_STEP_5: 'Post',
+  POST_REVIEW: 'Post',
+
   // Profile Stack
   PROFILE: 'Profile',
   SETTINGS: 'Settings',
@@ -177,11 +184,11 @@ export const ROUTES = {
   CONTACT_SUPPORT: 'ContactSupport',
   TERMS_OF_SERVICE: 'TermsOfService',
   PRIVACY_POLICY: 'PrivacyPolicy',
-  AI_ASSISTANT: 'AIAssistant',
   ANALYTICS: 'Analytics',
-  
+
   // Development
   SCREEN_CATALOG: 'ScreenCatalog',
+  ICON_TEST: 'IconTest',
 } as const;
 
 export type RouteName = typeof ROUTES[keyof typeof ROUTES];

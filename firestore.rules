@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Experts can read other users' basic info for matching
+      allow read: if request.auth != null && 
+        resource.data.isExpert == true;
+    }
+
+    // Tasks: owners can read/write, experts can read open tasks and write soft-claims
+    match /tasks/{taskId} {
+      // Owner can read/write their own tasks
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.ownerId;
+      
+      // Experts can read open tasks
+      allow read: if request.auth != null && 
+        resource.data.status == 'open';
+      
+      // Experts can update tasks for soft-claiming and confirming
+      allow update: if request.auth != null && 
+        (
+          // Soft-claim: can set status to 'reserved' and set reservedBy
+          (resource.data.status == 'open' && 
+           request.resource.data.status == 'reserved' &&
+           request.resource.data.reservedBy == request.auth.uid &&
+           request.resource.data.reservedUntil is timestamp &&
+           request.resource.data.ownerId == resource.data.ownerId &&
+           request.resource.data.expertId == resource.data.expertId) ||
+          
+          // Confirm claim: can set status to 'claimed' if they reserved it
+          (resource.data.status == 'reserved' &&
+           resource.data.reservedBy == request.auth.uid &&
+           request.resource.data.status == 'claimed' &&
+           request.resource.data.expertId == request.auth.uid &&
+           request.resource.data.reservedBy == null &&
+           request.resource.data.reservedUntil == null &&
+           request.resource.data.ownerId == resource.data.ownerId) ||
+          
+          // Update matching metadata (for system use)
+          (request.resource.data.matching is map &&
+           request.resource.data.ownerId == resource.data.ownerId)
+        );
+    }
+
+    // Invites: experts can read their own invites and update status
+    match /invites/{inviteId} {
+      // Experts can read their own invites
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.expertId;
+      
+      // Experts can update their own invite status
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.expertId &&
+        (
+          // Can update status and respondedAt
+          (request.resource.data.status in ['accepted', 'declined'] &&
+           request.resource.data.respondedAt is timestamp &&
+           request.resource.data.taskId == resource.data.taskId &&
+           request.resource.data.expertId == resource.data.expertId &&
+           request.resource.data.sentAt == resource.data.sentAt &&
+           request.resource.data.lastScore == resource.data.lastScore) ||
+          
+          // System can update all fields for matching
+          (request.resource.data.taskId == resource.data.taskId &&
+           request.resource.data.expertId == resource.data.expertId)
+        );
+      
+      // System can create invites
+      allow create: if request.auth != null;
+    }
+
+    // Default: deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,9 +1,17 @@
-import { Router } from 'express';
+import express from 'express';
+import { authMiddleware } from '../utils/auth';
 
-const router = Router();
+const router = express.Router();
 
-router.get('/dashboard', (req, res) => {
-  res.json({ message: 'Analytics dashboard endpoint' });
+// Apply auth middleware to all routes
+router.use(authMiddleware);
+
+// Get analytics dashboard
+router.get('/dashboard', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'Analytics dashboard would be returned here'
+  });
 });
 
 export default router;

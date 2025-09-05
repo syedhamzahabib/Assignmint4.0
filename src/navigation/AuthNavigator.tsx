@@ -16,6 +16,7 @@ const Stack = createStackNavigator<AuthStackParamList>();
 const AuthNavigator = () => {
   return (
     <Stack.Navigator
+      testID="auth-stack"
       initialRouteName={ROUTES.LANDING}
       screenOptions={{
         headerStyle: {

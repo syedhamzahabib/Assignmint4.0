@@ -1,0 +1,12 @@
+
+> assignmint-backend@1.0.0 dev
+> tsx watch -r dotenv/config src/index.ts
+
+[32minfo[39m: Firebase Admin initialized successfully for project: assignimt {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.122Z"}
+[32minfo[39m: DataSourceManager: Firestore not ready, using Mock data source as fallback {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.309Z"}
+[32minfo[39m: DataSourceManager: Switched to Firestore data source {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.309Z"}
+[32minfo[39m: Firebase Admin initialized successfully {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.309Z"}
+[32minfo[39m: Backend running on port 3000 | env=development | mock=false | datasource=Firestore | project=assignimt {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.367Z"}
+[32minfo[39m: Initializing data source manager... {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.367Z"}
+[32minfo[39m: Data source connected successfully: Firestore {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.776Z"}
+[32minfo[39m: Server initialized successfully {"service":"assignmint-backend","timestamp":"2025-09-01T16:50:43.776Z"}

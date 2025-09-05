@@ -1,87 +1,71 @@
 // App.js - Production Safe with Error Boundaries
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, StyleSheet, StatusBar, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { StyleSheet, StatusBar, View, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// Import Firebase first to ensure initialization
+import './src/lib/firebase';
 
 // Import constants
 import { COLORS } from './src/constants';
 
-// Import Firebase test and navigation
-import { testFirebaseConnection, getFirebaseStatus, quickFirebaseCheck } from './src/config/firebase';
-import AppNavigator from './src/navigation/AppNavigator';
-
-// Loading component
-const LoadingScreen = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color={COLORS.primary} />
-    <Text style={styles.loadingText}>Loading AssignMint...</Text>
-  </View>
-);
-
-// Firebase error fallback
-const FirebaseErrorFallback = ({ onRetry }: { onRetry: () => void }) => (
-  <View style={styles.errorContainer}>
-    <Text style={styles.errorIcon}>🔥</Text>
-    <Text style={styles.errorTitle}>Firebase Connection Issue</Text>
-    <Text style={styles.errorMessage}>
-      There was a problem connecting to our services. The app will continue with limited functionality.
-    </Text>
-    <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-      <Text style={styles.retryButtonText}>Try Again</Text>
-    </TouchableOpacity>
-  </View>
-);
+// Import new auth and navigation
+import { AuthProvider } from './src/state/AuthProvider';
+import RootNavigator from './src/navigation/RootNavigator';
+import { ensureSignedInDev } from './src/lib/session';
 
 const App = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [firebaseStatus, setFirebaseStatus] = useState<any>(null);
-  const [hasError, setHasError] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
         console.log('🚀 Initializing AssignMint app...');
-        
-        // Quick Firebase health check
-        const healthCheck = quickFirebaseCheck();
-        console.log('📊 Firebase Health Check Result:', healthCheck);
-        
-        // Test Firebase connection
-        const result = await testFirebaseConnection();
-        const status = getFirebaseStatus();
-        setFirebaseStatus(status);
-        
-        if (!result.success) {
-          console.warn('⚠️ Firebase test failed, but app will continue with mock data');
-          setHasError(false); // Don't treat this as a fatal error
+        const token = await ensureSignedInDev();
+        if (token) {
+          console.log('✅ Dev sign-in successful, token length:', token.length);
         } else {
-          console.log('✅ Firebase connection test passed');
+          console.log('⚠️ Dev sign-in skipped or failed');
         }
-        
-      } catch (error) {
-        console.error('❌ App initialization error:', error);
-        setHasError(false); // Don't treat this as a fatal error, use mock data
-      } finally {
-        setIsLoading(false);
+        setIsInitialized(true);
+      } catch (err) {
+        console.error('❌ App initialization failed:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setIsInitialized(true); // Still show the app, but with error
       }
     };
 
     initializeApp();
   }, []);
 
+  if (!isInitialized) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Initializing...</Text>
+      </View>
+    );
+  }
 
-
-  if (isLoading) {
-    return <LoadingScreen />;
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Initialization Error:</Text>
+        <Text style={styles.errorDetails}>{error}</Text>
+      </View>
+    );
   }
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
-      <SafeAreaView style={styles.container}>
-        <AppNavigator />
-      </SafeAreaView>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 };
 
@@ -97,46 +81,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    fontSize: 18,
     color: COLORS.text,
-    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
     backgroundColor: COLORS.background,
+    padding: 20,
   },
-  errorIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+  errorText: {
+    fontSize: 18,
+    color: 'red',
+    marginBottom: 10,
   },
-  errorTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  errorDetails: {
+    fontSize: 14,
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 12,
-  },
-  errorMessage: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  retryButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

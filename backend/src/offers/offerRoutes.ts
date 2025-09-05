@@ -1,13 +1,25 @@
-import { Router } from 'express';
+import express from 'express';
+import { authMiddleware } from '../utils/auth';
 
-const router = Router();
+const router = express.Router();
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Get offers endpoint' });
+// Apply auth middleware to all routes
+router.use(authMiddleware);
+
+// Get all offers
+router.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'Offers list would be returned here'
+  });
 });
 
-router.post('/', (req, res) => {
-  res.json({ message: 'Create offer endpoint' });
+// Create a new offer
+router.post('/', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'Offer creation endpoint'
+  });
 });
 
 export default router;

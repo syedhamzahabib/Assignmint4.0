@@ -40,7 +40,7 @@ const TaskContentSection: React.FC<TaskContentSectionProps> = ({ task }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>📋 Task Description</Text>
-      
+
       <View style={styles.contentCard}>
         <Text style={styles.description}>
           {task.description}
@@ -72,7 +72,7 @@ const TaskContentSection: React.FC<TaskContentSectionProps> = ({ task }) => {
                 {getAILevelText(task.aiLevel)}
               </Text>
               <Text style={styles.aiLevelDescription}>
-                {task.aiLevel === 'none' 
+                {task.aiLevel === 'none'
                   ? 'Traditional human work with no AI assistance'
                   : task.aiLevel === 'assisted'
                   ? 'AI helps with research and drafting'
@@ -83,7 +83,7 @@ const TaskContentSection: React.FC<TaskContentSectionProps> = ({ task }) => {
               </Text>
             </View>
           </View>
-          
+
           {task.aiLevel !== 'none' && task.aiPercentage && (
             <View style={styles.aiPercentageRow}>
               <Text style={styles.aiPercentageLabel}>AI Involvement:</Text>
@@ -199,4 +199,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TaskContentSection; 
+export default TaskContentSection;

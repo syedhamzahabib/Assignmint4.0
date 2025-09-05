@@ -24,26 +24,28 @@ const SignUpPaymentScreen: React.FC<SignUpPaymentScreenProps> = ({ navigation })
 
   const handleAddPaymentMethod = async () => {
     setIsAddingPayment(true);
-    
+
     try {
       // Mock payment method addition
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise<void>(resolve => setTimeout(resolve, 2000));
+
       analytics.track(ANALYTICS_EVENTS.PAYMENT_METHOD_ADDED);
-      
+
       // Update user with payment method
       if (user) {
         const updatedUser = { ...user, hasPaymentMethod: true };
         upgradeFromGuest(updatedUser);
       }
-      
+
       Alert.alert(
         'Success',
         'Payment method added successfully!',
         [
           {
             text: 'Continue',
-            onPress: () => navigation.navigate('MainTabs'),
+            onPress: () => {
+              // Navigation will happen automatically when AppNavigator detects user state change
+            },
           },
         ]
       );
@@ -56,14 +58,16 @@ const SignUpPaymentScreen: React.FC<SignUpPaymentScreenProps> = ({ navigation })
 
   const handleSkipForNow = () => {
     analytics.track(ANALYTICS_EVENTS.PAYMENT_METHOD_SKIPPED);
-    
+
     Alert.alert(
       'Skip Payment Method',
       'You can add a payment method anytime in your Profile → Payments section.',
       [
         {
           text: 'Skip for now',
-          onPress: () => navigation.navigate('MainTabs'),
+          onPress: () => {
+            // Navigation will happen automatically when AppNavigator detects user state change
+          },
         },
         {
           text: 'Add payment method',
@@ -99,7 +103,7 @@ const SignUpPaymentScreen: React.FC<SignUpPaymentScreenProps> = ({ navigation })
           </View>
 
           <Text style={styles.title}>Add a payment method (optional)</Text>
-          
+
           <Text style={styles.subtitle}>
             Add a payment method now to make it easier to pay for tasks, or skip and add one later.
           </Text>

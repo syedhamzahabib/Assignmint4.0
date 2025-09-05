@@ -1,9 +1,7 @@
 // services/AppStateManager.js - Fixed version with proper dependency management
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Alert } from 'react-native';
-
-// Import Firebase configuration to ensure it's initialized
-import { auth, getFirebaseStatus } from '../config/firebase';
+import React, { useEffect, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
+import { analytics, ANALYTICS_EVENTS } from './AnalyticsService';
 
 // Mock API for tasks
 const MockTasksAPI = {

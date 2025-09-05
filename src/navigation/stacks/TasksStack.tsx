@@ -1,14 +1,13 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { COLORS } from '../../constants';
-import { TasksStackParamList } from '../../types/navigation';
-import { ROUTES } from '../../types/navigation';
+import { TasksStackParamList, ROUTES } from '../types';
 
 // Import screens
-import TasksScreen from '../../screens/TasksScreen';
+import MyTasksScreen from '../../screens/MyTasksScreen';
 import TaskDetailsScreen from '../../screens/TaskDetailsScreen';
 import UploadDeliveryScreen from '../../screens/UploadDeliveryScreen';
-import ChatScreen from '../../screens/ChatScreen';
+import ChatThreadScreen from '../../screens/ChatThreadScreen';
 
 const Stack = createStackNavigator<TasksStackParamList>();
 
@@ -32,38 +31,37 @@ const TasksStack = () => {
     >
       <Stack.Screen
         name={ROUTES.TASKS}
-        component={TasksScreen}
+        component={MyTasksScreen}
         options={{
-          headerShown: false, // Hide header for full-bleed design
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name={ROUTES.TASK_DETAILS}
         component={TaskDetailsScreen}
-        options={({ route }) => ({
+        options={{
           title: 'Task Details',
           headerBackTitle: 'Back',
-        })}
+        }}
       />
       <Stack.Screen
         name={ROUTES.UPLOAD_DELIVERY}
         component={UploadDeliveryScreen}
-        options={({ route }) => ({
+        options={{
           title: 'Upload Delivery',
           headerBackTitle: 'Back',
-        })}
+        }}
       />
       <Stack.Screen
-        name={ROUTES.CHAT}
-        component={ChatScreen}
-        options={({ route }) => ({
+        name={ROUTES.CHAT_THREAD}
+        component={ChatThreadScreen}
+        options={{
           title: 'Chat',
           headerBackTitle: 'Back',
-        })}
+        }}
       />
     </Stack.Navigator>
   );
 };
 
 export default TasksStack;
-

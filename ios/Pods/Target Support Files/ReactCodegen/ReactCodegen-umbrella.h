@@ -33,6 +33,8 @@
 #import "react/renderer/components/safeareacontext/States.h"
 #import "rnasyncstorage/rnasyncstorage.h"
 #import "rnasyncstorageJSI.h"
+#import "RNCConfigModule/RNCConfigModule.h"
+#import "RNCConfigModuleJSI.h"
 #import "rngesturehandler_codegen/rngesturehandler_codegen.h"
 #import "rngesturehandler_codegenJSI.h"
 #import "rnreanimated/rnreanimated.h"
@@ -41,8 +43,6 @@
 #import "rnscreensJSI.h"
 #import "RNVectorIconsSpec/RNVectorIconsSpec.h"
 #import "RNVectorIconsSpecJSI.h"
-#import "rnworklets/rnworklets.h"
-#import "rnworkletsJSI.h"
 #import "safeareacontext/safeareacontext.h"
 #import "safeareacontextJSI.h"
 

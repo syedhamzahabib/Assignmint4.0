@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { Alert, ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS, FONTS } from '../constants';
-import { useAuthStore } from '../services/AuthStore';
 import { analytics, ANALYTICS_EVENTS } from '../services/AnalyticsService';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, set } from 'firebase/database';
+import { ref as storageRef, uploadString } from 'firebase/storage';
+import { auth, db, database, storage } from '../lib/firebase';
+import { ROUTES } from '../types/navigation';
+import { mapAuthError } from '../utils/authError';
 
 interface SignUpScreenProps {
   navigation: any;
@@ -25,55 +21,104 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  const { signUp, isLoading } = useAuthStore();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [displayName, setDisplayName] = useState('');
 
   const handleSignUp = async () => {
-    if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+    setError('');
+    const e = email.trim().toLowerCase();
+    
+    // Validation
+    if (!displayName.trim()) {
+      setError('Display name is required');
       return;
     }
-
-    if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long');
+    
+    if (!e || !password) {
+      setError('Please fill all fields');
+      return;
+    }
+    
+    if (!e.includes('@')) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
 
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    analytics.track(ANALYTICS_EVENTS.SIGN_UP_START, { email });
-
+    analytics.track(ANALYTICS_EVENTS.SIGN_UP_START, { email: e });
+    setIsLoading(true);
+    
     try {
-      // Mock user for now - in real app, this would be an API call
-      const mockUser = {
-        id: 'user-123',
-        email,
-        name: 'Test User',
-        hasPaymentMethod: false,
-      };
+      console.log('🚀 Starting signup process with Firebase Web SDK...');
+      console.log('📧 Email:', e);
+      console.log('👤 Display Name:', displayName);
+      console.log('🔐 Password length:', password.length);
       
-      signUp(mockUser);
-      analytics.track(ANALYTICS_EVENTS.SIGN_UP_COMPLETE, { email });
-      navigation.navigate('SignUpPayment');
-    } catch (error) {
-      Alert.alert('Error', 'Sign up failed. Please try again.');
+      // 1) Native Firebase Auth - this must succeed
+      console.log('📝 Creating Firebase user with Web SDK...');
+      const cred = await createUserWithEmailAndPassword(auth, e, password);
+      console.log('✅ Firebase user created:', cred.user.uid);
+      
+      // 2) Update profile with display name
+      console.log('👤 Updating user profile...');
+      await updateProfile(cred.user, { displayName });
+      console.log('✅ Profile updated with display name');
+
+      // 3) Firestore profile - this must succeed
+      console.log('💾 Creating Firestore profile...');
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        displayName,
+        email: e,
+        photoURL: cred.user.photoURL ?? null,
+        role: 'user',
+        stripeCustomerId: null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      console.log('✅ Firestore profile created');
+
+      // 4) Non-blocking operations (RTDB and Storage seeds)
+      console.log('🌱 Starting non-blocking operations...');
+      const nonBlockingOps = [
+        set(ref(database, `users/${cred.user.uid}/profile`), {
+          displayName,
+          email: e,
+          createdAt: Date.now(),
+        }),
+        uploadString(ref(storage, `users/${cred.user.uid}/hello.txt`), 'Hi', 'raw'),
+      ];
+      await Promise.allSettled(nonBlockingOps);
+      console.log('✅ Non-blocking operations completed');
+
+      analytics.track(ANALYTICS_EVENTS.SIGN_UP_COMPLETE, { email: e });
+              // AuthProvider will handle navigation to Home automatically
+      console.log('🎉 Signup completed successfully');
+      
+    } catch (err: any) {
+      console.error('[AUTH] SIGNUP_ERROR', err);
+      setError(mapAuthError(err));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleBackToLanding = () => {
-    navigation.navigate('Landing');
+    navigation.navigate(ROUTES.LANDING);
   };
 
   const handleSignIn = () => {
-    navigation.navigate('Login');
+    navigation.navigate(ROUTES.LOGIN);
   };
 
   return (
@@ -98,6 +143,20 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             Create your account to start posting tasks and connecting with experts
           </Text>
 
+          {/* Display Name Input */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Display Name</Text>
+            <TextInput
+              style={styles.input}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Enter your display name"
+              autoCapitalize="words"
+              autoCorrect={false}
+              testID="signup.displayName"
+            />
+          </View>
+
           {/* Email Input */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
@@ -109,6 +168,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              testID="signup.email"
             />
           </View>
 
@@ -124,6 +184,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
+                testID="signup.password"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -151,6 +212,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
+                testID="signup.confirmPassword"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -165,12 +227,20 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             </View>
           </View>
 
+          {/* Error Display */}
+          {error ? (
+            <Text style={styles.errorText} testID="signup.error">
+              {error}
+            </Text>
+          ) : null}
+
           {/* Sign Up Button */}
           <TouchableOpacity
-            style={[styles.signUpButton, isLoading && styles.disabledButton]}
+            style={[styles.signUpButton, (isLoading || !displayName.trim() || !email.trim() || !password || !confirmPassword) && styles.disabledButton]}
             onPress={handleSignUp}
-            disabled={isLoading}
+            disabled={isLoading || !displayName.trim() || !email.trim() || !password || !confirmPassword}
             activeOpacity={0.8}
+            testID="signup.submit"
           >
             {isLoading ? (
               <ActivityIndicator color={COLORS.white} />
@@ -200,7 +270,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
           {/* Sign In Link */}
           <View style={styles.signInContainer}>
             <Text style={styles.signInText}>Already have an account? </Text>
-            <TouchableOpacity onPress={handleSignIn}>
+            <TouchableOpacity onPress={handleSignIn} testID="auth.switchToLogin">
               <Text style={styles.signInLink}>Sign in</Text>
             </TouchableOpacity>
           </View>
@@ -288,6 +358,12 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 12,
+  },
+  errorText: {
+    color: COLORS.error || '#FF3B30',
+    fontSize: FONTS.sizes.sm,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   hint: {
     fontSize: FONTS.sizes.xs,

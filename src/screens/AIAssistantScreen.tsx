@@ -17,6 +17,7 @@ import {
 import { COLORS, FONTS, SPACING } from '../constants';
 import { useAIChat } from '../hooks/useAIChat';
 import Icon, { Icons } from '../components/common/Icon';
+import AIApiService from '../services/AIApiService';
 
 interface Message {
   id: string;
@@ -45,7 +46,9 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [inputText, setInputText] = useState('');
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
-  
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
   // Use the AI chat hook
   const {
     messages,
@@ -63,8 +66,31 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     clearChat,
     toggleExplanationMode,
   } = useAIChat('mock-user-id'); // TODO: Replace with actual user ID from auth
-  
+
   const scrollViewRef = useRef<ScrollView>(null);
+  const aiApiService = new AIApiService();
+
+  // Check AI service connection on mount
+  useEffect(() => {
+    checkAIConnection();
+  }, []);
+
+  const checkAIConnection = async () => {
+    try {
+      setIsConnected(null);
+      setConnectionError(null);
+      
+      const connected = await aiApiService.testConnection();
+      setIsConnected(connected);
+      
+      if (!connected) {
+        setConnectionError('AI service is currently unavailable. Please try again later.');
+      }
+    } catch (error) {
+      setIsConnected(false);
+      setConnectionError('Unable to connect to AI service. Please check your internet connection.');
+    }
+  };
 
   useEffect(() => {
     if (scrollViewRef.current) {
@@ -74,9 +100,30 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-    
-    await sendMessage(inputText);
-    setInputText('');
+
+    if (!isConnected) {
+      Alert.alert(
+        'AI Service Unavailable',
+        'The AI service is currently unavailable. Please try again later.',
+        [
+          { text: 'Retry', onPress: checkAIConnection },
+          { text: 'OK' }
+        ]
+      );
+      return;
+    }
+
+    try {
+      await sendMessage(inputText);
+      setInputText('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert(
+        'Error',
+        'Failed to send message. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleTakePhoto = () => {
@@ -98,8 +145,47 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleCreateNewChat = async () => {
-    await createNewChat();
-    setShowSessionsModal(false);
+    try {
+      await createNewChat();
+      setShowSessionsModal(false);
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create new chat. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const renderConnectionStatus = () => {
+    if (isConnected === null) {
+      return (
+        <View style={styles.connectionStatus}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.connectionText}>Checking AI service...</Text>
+        </View>
+      );
+    }
+
+    if (!isConnected) {
+      return (
+        <View style={styles.connectionStatus}>
+          <Icon name={Icons.warning} size={16} color={COLORS.warning} />
+          <Text style={styles.connectionText}>AI service unavailable</Text>
+          <TouchableOpacity onPress={checkAIConnection} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.connectionStatus}>
+        <Icon name={Icons.checkmark} size={16} color={COLORS.success} />
+        <Text style={styles.connectionText}>AI service connected</Text>
+      </View>
+    );
   };
 
   const renderMessage = (message: Message) => (
@@ -121,7 +207,7 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.subjectBadgeText}>{message.subject}</Text>
           </View>
         )}
-        
+
         <Text
           style={[
             styles.messageText,
@@ -130,12 +216,12 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         >
           {message.text}
         </Text>
-        
+
         {message.attachments && message.attachments.length > 0 && (
           <View style={styles.attachmentContainer}>
             {message.attachments.map((attachment, index) => (
               <View key={index} style={styles.attachmentItem}>
-                <Icon 
+                <Icon
                   name={attachment.type === 'image' ? Icons.camera : Icons.document}
                   size={16}
                   color={COLORS.textSecondary}
@@ -146,11 +232,11 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             ))}
           </View>
         )}
-        
+
         <Text style={styles.timestamp}>
-          {message.timestamp.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+          {message.timestamp.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
           })}
         </Text>
       </View>
@@ -178,7 +264,7 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   );
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -191,24 +277,27 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerButton}
             onPress={() => setShowSessionsModal(true)}
           >
             <Icon name={Icons.book} size={20} color={COLORS.text} />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerButton}
             onPress={toggleExplanationMode}
           >
-            <Icon 
-              name={explanationMode ? Icons.brain : Icons.help} 
-              size={20} 
-              color={COLORS.text} 
+            <Icon
+              name={explanationMode ? Icons.brain : Icons.help}
+              size={20}
+              color={COLORS.text}
             />
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Connection Status */}
+      {renderConnectionStatus()}
 
       {/* Messages */}
       <ScrollView
@@ -218,7 +307,7 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {messages.map(renderMessage)}
-        
+
         {isTyping && (
           <View style={[styles.messageContainer, styles.aiMessage]}>
             <View style={[styles.messageBubble, styles.aiBubble]}>
@@ -226,6 +315,19 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <ActivityIndicator size="small" color={COLORS.primary} />
                 <Text style={styles.typingText}>AI is thinking...</Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* Error message if connection failed */}
+        {connectionError && (
+          <View style={[styles.messageContainer, styles.aiMessage]}>
+            <View style={[styles.messageBubble, styles.aiBubble, styles.errorBubble]}>
+              <Icon name={Icons.warning} size={20} color={COLORS.warning} />
+              <Text style={styles.errorText}>{connectionError}</Text>
+              <TouchableOpacity onPress={checkAIConnection} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -239,24 +341,25 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         >
           <Icon name={Icons.attachment} size={20} color={COLORS.text} />
         </TouchableOpacity>
-        
+
         <TextInput
           style={styles.textInput}
-          placeholder="Ask me anything about your assignment..."
+          placeholder={isConnected ? "Ask me anything about your assignment..." : "AI service unavailable..."}
           placeholderTextColor={COLORS.textSecondary}
           value={inputText}
           onChangeText={setInputText}
           multiline
           maxLength={1000}
+          editable={isConnected === true}
         />
-        
+
         <TouchableOpacity
           style={[
             styles.sendButton,
-            !inputText.trim() && styles.sendButtonDisabled,
+            (!inputText.trim() || !isConnected) && styles.sendButtonDisabled,
           ]}
           onPress={handleSendMessage}
-          disabled={!inputText.trim()}
+          disabled={!inputText.trim() || !isConnected}
         >
           <Icon name={Icons.send} size={16} color={COLORS.white} />
         </TouchableOpacity>
@@ -272,7 +375,7 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Attachment</Text>
-            
+
             <TouchableOpacity
               style={styles.modalOption}
               onPress={handleTakePhoto}
@@ -283,7 +386,7 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.modalOptionSubtext}>Use camera to capture assignment</Text>
               </View>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.modalOption}
               onPress={handleUploadDocument}
@@ -294,7 +397,7 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.modalOptionSubtext}>Select PDF, image, or document</Text>
               </View>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.modalCancel}
               onPress={() => setShowAttachmentModal(false)}
@@ -324,11 +427,11 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.newChatButtonText}>New Chat</Text>
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.sessionsList}>
               {chatSessions.map(renderChatSession)}
             </ScrollView>
-            
+
             <TouchableOpacity
               style={styles.modalCancel}
               onPress={() => setShowSessionsModal(false)}
@@ -572,6 +675,41 @@ const styles = StyleSheet.create({
   sessionDate: {
     fontSize: FONTS.sizes.xs,
     color: COLORS.textSecondary,
+  },
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.sm,
+    backgroundColor: COLORS.gray100,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  connectionText: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.xs,
+    flex: 1,
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 15,
+  },
+  retryButtonText: {
+    color: COLORS.white,
+    fontSize: FONTS.sizes.xs,
+    fontWeight: FONTS.weights.medium,
+  },
+  errorBubble: {
+    borderColor: COLORS.warning,
+    backgroundColor: COLORS.gray100,
+  },
+  errorText: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.warning,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
   },
   modalTitle: {
     fontSize: FONTS.sizes.lg,

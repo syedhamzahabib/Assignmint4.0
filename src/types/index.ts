@@ -32,19 +32,58 @@ export interface Task {
   location?: string;
   isUrgent: boolean;
   isFeatured: boolean;
+  // New fields for matching system
+  ownerId: string; // Alias for requesterId
+  price: number; // Alias for budget
+  deadlineISO: string; // ISO string format
+  reservedBy?: string | null;
+  reservedUntil?: Date | null;
+  matching?: {
+    invitedNow: number;
+    nextWaveAt: Date;
+  };
 }
 
-export type TaskStatus = 
+export type TaskStatus =
+  | 'open'           // New: Available for experts to claim
+  | 'reserved'       // New: Soft-claimed by expert (15min window)
+  | 'claimed'        // New: Confirmed by expert
+  | 'submitted'      // Expert submitted work
+  | 'completed'      // Task completed and paid
   | 'awaiting_expert'
   | 'in_progress'
   | 'pending_review'
-  | 'completed'
   | 'cancelled'
   | 'disputed'
   | 'working'
   | 'delivered'
   | 'payment_received'
   | 'revision_requested';
+
+// New interface for the matching system
+export interface ExpertUser {
+  uid: string;
+  displayName: string;
+  subjects: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  level: 'HS' | 'UG' | 'Grad';
+  ratingAvg: number;
+  ratingCount: number;
+  acceptRate: number;
+  medianResponseMins: number;
+  completedBySubject: Record<string, number>;
+}
+
+export interface Invite {
+  inviteId: string;
+  taskId: string;
+  expertId: string;
+  sentAt: Date;
+  respondedAt?: Date | null;
+  status: 'sent' | 'accepted' | 'declined';
+  lastScore: number;
+}
 
 export interface Notification {
   id: string;
@@ -215,4 +254,4 @@ export interface Theme {
   spacing: {
     [key: string]: number;
   };
-} 
+}

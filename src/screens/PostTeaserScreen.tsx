@@ -33,11 +33,11 @@ const PostTeaserScreen: React.FC<PostTeaserScreenProps> = ({ navigation }) => {
   };
 
   const handleBrowseTasks = () => {
-    navigation.navigate('Home');
+            // Navigation will happen automatically when auth state changes
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../ios/Assignmint/Images.xcassets/postteaser.imageset/postteaser.png')}
       style={styles.backgroundImage}
       resizeMode="cover"
@@ -46,7 +46,7 @@ const PostTeaserScreen: React.FC<PostTeaserScreenProps> = ({ navigation }) => {
         <View style={styles.content}>
           {/* Upper half - empty to let background image show */}
           <View style={styles.upperHalf} />
-          
+
           {/* Lower half - CTA buttons */}
           <View style={styles.lowerHalf}>
             <TouchableOpacity

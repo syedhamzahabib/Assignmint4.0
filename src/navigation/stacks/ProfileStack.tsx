@@ -7,19 +7,20 @@ import { ROUTES } from '../../types/navigation';
 // Import screens
 import ProfileScreen from '../../screens/ProfileScreen';
 import SettingsScreen from '../../screens/SettingsScreen';
-import PaymentsScreen from '../../screens/PaymentsScreen';
-import AddPaymentMethodScreen from '../../screens/AddPaymentMethodScreen';
-import WalletScreen from '../../screens/WalletScreen';
 import AppearanceSettingsScreen from '../../screens/AppearanceSettingsScreen';
 import NotificationPreferencesScreen from '../../screens/NotificationPreferencesScreen';
 import LanguageSelectionScreen from '../../screens/LanguageSelectionScreen';
 import DownloadPreferencesScreen from '../../screens/DownloadPreferencesScreen';
 import BetaFeaturesScreen from '../../screens/BetaFeaturesScreen';
+import PaymentsScreen from '../../screens/PaymentsScreen';
+import AddPaymentMethodScreen from '../../screens/AddPaymentMethodScreen';
+import WalletScreen from '../../screens/WalletScreen';
 import ContactSupportScreen from '../../screens/ContactSupportScreen';
 import TermsOfServiceScreen from '../../screens/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '../../screens/PrivacyPolicyScreen';
 import AIAssistantScreen from '../../screens/AIAssistantScreen';
 import AnalyticsScreen from '../../screens/AnalyticsScreen';
+import IconTestScreen from '../../screens/IconTestScreen';
 
 const Stack = createStackNavigator<ProfileStackParamList>();
 
@@ -53,30 +54,6 @@ const ProfileStack = () => {
         component={SettingsScreen}
         options={{
           title: 'Settings',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.PAYMENTS}
-        component={PaymentsScreen}
-        options={{
-          title: 'Payment Methods',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.ADD_PAYMENT_METHOD}
-        component={AddPaymentMethodScreen}
-        options={{
-          title: 'Add Payment Method',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.WALLET}
-        component={WalletScreen}
-        options={{
-          title: 'Wallet',
           headerBackTitle: 'Back',
         }}
       />
@@ -121,6 +98,30 @@ const ProfileStack = () => {
         }}
       />
       <Stack.Screen
+        name={ROUTES.PAYMENTS}
+        component={PaymentsScreen}
+        options={{
+          title: 'Payments',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name={ROUTES.ADD_PAYMENT_METHOD}
+        component={AddPaymentMethodScreen}
+        options={{
+          title: 'Add Payment Method',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name={ROUTES.WALLET}
+        component={WalletScreen}
+        options={{
+          title: 'Wallet',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
         name={ROUTES.CONTACT_SUPPORT}
         component={ContactSupportScreen}
         options={{
@@ -157,6 +158,14 @@ const ProfileStack = () => {
         component={AnalyticsScreen}
         options={{
           title: 'Analytics',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name={ROUTES.ICON_TEST}
+        component={IconTestScreen}
+        options={{
+          title: 'Icon Test',
           headerBackTitle: 'Back',
         }}
       />

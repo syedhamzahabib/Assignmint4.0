@@ -5,11 +5,11 @@ import { Alert } from 'react-native';
 
 // Mock API for tasks
 const MockTasksAPI = {
-  delay: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
-  
+  delay: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)),
+
   async getTasksByRole(role: string) {
     await this.delay(500);
-    
+
     const requesterTasks = [
       {
         id: 'req_1',
@@ -56,41 +56,41 @@ const MockTasksAPI = {
 
   async getTaskStats(role: string) {
     await this.delay(200);
-    
+
     const response = await this.getTasksByRole(role);
     const tasks = response.data as any[];
-    
+
     return {
       success: true,
       data: {
         total: tasks.length,
-        active: tasks.filter((t: any) => 
+        active: tasks.filter((t: any) =>
           ['in_progress', 'working', 'pending_review'].includes(t.status)
         ).length,
-        completed: tasks.filter((t: any) => 
+        completed: tasks.filter((t: any) =>
           ['completed', 'payment_received'].includes(t.status)
         ).length,
         overdue: 0,
-      }
+      },
     };
-  }
+  },
 };
 
 interface AppState {
   // App State
   isInitialized: boolean;
   isLoading: boolean;
-  
+
   // User State
   currentUser: any;
   userRole: string;
-  
+
   // UI State
   activeTab: string;
   showWallet: boolean;
   walletParams: any;
   unreadNotifications: number;
-  
+
   // Tasks State
   tasks: any[];
   taskStats: {
@@ -99,7 +99,7 @@ interface AppState {
     completed: number;
     overdue: number;
   };
-  
+
   // Loading States
   tasksLoading: boolean;
   actionLoading: boolean;
@@ -115,17 +115,17 @@ class AppStateManager {
       // App State
       isInitialized: false,
       isLoading: false,
-      
+
       // User State
       currentUser: null,
       userRole: 'requester',
-      
+
       // UI State
       activeTab: 'home',
       showWallet: false,
       walletParams: {},
       unreadNotifications: 3,
-      
+
       // Tasks State
       tasks: [],
       taskStats: {
@@ -134,12 +134,12 @@ class AppStateManager {
         completed: 0,
         overdue: 0,
       },
-      
+
       // Loading States
       tasksLoading: false,
       actionLoading: false,
     };
-    
+
     this.listeners = new Set();
     this.initializePromise = null;
   }
@@ -158,9 +158,9 @@ class AppStateManager {
     const hasChanges = Object.keys(updates).some(
       key => this.state[key as keyof AppState] !== updates[key as keyof AppState]
     );
-    
-    if (!hasChanges) return;
-    
+
+    if (!hasChanges) {return;}
+
     this.state = { ...this.state, ...updates };
     this.listeners.forEach(listener => {
       try {
@@ -184,7 +184,7 @@ class AppStateManager {
 
     this.initializePromise = this._doInitialize();
     return this.initializePromise;
-  }
+  };
 
   private async _doInitialize(): Promise<void> {
     try {
@@ -193,22 +193,22 @@ class AppStateManager {
       }
 
       this.setState({ isLoading: true });
-      
+
       // Load initial data in parallel
       await Promise.all([
         this.loadTasks(),
         this.loadTaskStats(),
       ]);
-      
-      this.setState({ 
+
+      this.setState({
         isInitialized: true,
-        isLoading: false 
+        isLoading: false,
       });
     } catch (error) {
       console.error('App initialization failed:', error);
-      this.setState({ 
+      this.setState({
         isLoading: false,
-        isInitialized: false
+        isInitialized: false,
       });
     } finally {
       this.initializePromise = null;
@@ -219,19 +219,19 @@ class AppStateManager {
   loadTasks = async (): Promise<void> => {
     try {
       this.setState({ tasksLoading: true });
-      
+
       const response = await MockTasksAPI.getTasksByRole(this.state.userRole);
       if (response.success) {
-        this.setState({ 
+        this.setState({
           tasks: response.data,
-          tasksLoading: false 
+          tasksLoading: false,
         });
       }
     } catch (error) {
       console.error('Failed to load tasks:', error);
       this.setState({ tasksLoading: false });
     }
-  }
+  };
 
   // Load task statistics
   loadTaskStats = async (): Promise<void> => {
@@ -243,55 +243,55 @@ class AppStateManager {
     } catch (error) {
       console.log('Failed to load task stats:', error);
     }
-  }
+  };
 
   // Switch user role
   switchRole = async (newRole: string): Promise<void> => {
     if (newRole === this.state.userRole) {
       return;
     }
-    
+
     this.setState({ userRole: newRole });
     await Promise.all([
       this.loadTasks(),
       this.loadTaskStats(),
     ]);
-  }
+  };
 
   // Set user role (alias for switchRole)
   setUserRole = async (newRole: string): Promise<void> => {
     return this.switchRole(newRole);
-  }
+  };
 
   // Handle tab change
   setActiveTab = (tabName: string): void => {
     if (tabName === this.state.activeTab) {
       return;
     }
-    
+
     this.setState({ activeTab: tabName });
-    
+
     // Load data based on active tab if needed
     if (tabName === 'tasks' && this.state.tasks.length === 0) {
       this.loadTasks();
       this.loadTaskStats();
     }
-  }
+  };
 
   // Handle wallet navigation
   openWallet = (params: any = {}): void => {
-    this.setState({ 
-      showWallet: true, 
-      walletParams: params 
+    this.setState({
+      showWallet: true,
+      walletParams: params,
     });
-  }
+  };
 
   closeWallet = (): void => {
-    this.setState({ 
-      showWallet: false, 
-      walletParams: {} 
+    this.setState({
+      showWallet: false,
+      walletParams: {},
     });
-  }
+  };
 
   // Refresh all data
   refreshData = async (): Promise<void> => {
@@ -299,7 +299,7 @@ class AppStateManager {
       this.loadTasks(),
       this.loadTaskStats(),
     ]);
-  }
+  };
 }
 
 // Create singleton instance
@@ -309,7 +309,7 @@ const appStateManager = new AppStateManager();
 export const useAppState = () => {
   const [state, setState] = useState(() => appStateManager.getState());
   const stateRef = useRef(state);
-  
+
   // Update ref when state changes to prevent stale closures
   stateRef.current = state;
 
@@ -320,7 +320,7 @@ export const useAppState = () => {
         setState(newState);
       }
     });
-    
+
     return unsubscribe;
   }, []);
 
@@ -340,10 +340,10 @@ export const useAppState = () => {
   return {
     // State
     ...state,
-    
+
     // Actions (memoized)
     ...actions.current,
   };
 };
 
-export default appStateManager; 
+export default appStateManager;

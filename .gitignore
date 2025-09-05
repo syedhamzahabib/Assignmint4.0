@@ -1,51 +1,46 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# Node / RN
 node_modules/
-
-# Expo
+npm-debug.log*
 .expo/
-dist/
-web-build/
-expo-env.d.ts
+.expo-shared/
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
+# iOS
+ios/Pods/
+ios/build/
+ios/DerivedData/
+*.xcworkspace/xcuserdata/
 
-# Metro
-.metro-health-check*
+# Android
+android/.gradle/
+android/.idea/
+android/build/
+*.iml
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
+# OS / Editors
 .DS_Store
-*.pem
-
-# local env files
-.env*.local
-.env
-env/.env.*
-
-# Firebase
-.firebase
-
-# IDE
+.idea/
 .vscode/
-.cursor/
 
-# TypeScript
-*.tsbuildinfo
+# Env / secrets
+.env*
+google-services.json
+GoogleService-Info.plist
 
-# Build artifacts
-build/
+# Metro / cache / dist
 dist/
+.cache/
+# Firebase emulators / local state
+.firebase/
+firebase-debug.log
+firestore_export/
+emulator-data/
+
+# Coverage / test output
+coverage/
+backend/coverage/
+.nyc_output/
+junit.xml
+
+# Mac / Editor miscellany
+.Trash/
 *.log

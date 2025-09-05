@@ -23,17 +23,17 @@ const PaymentsScreen: React.FC<PaymentsScreenProps> = ({ navigation }) => {
 
   const handleAddPaymentMethod = async () => {
     setIsAddingPayment(true);
-    
+
     try {
       // Mock payment method addition
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise<void>(resolve => setTimeout(resolve, 2000));
+
       // Update user with payment method
       if (user) {
         const updatedUser = { ...user, hasPaymentMethod: true };
         upgradeFromGuest(updatedUser);
       }
-      
+
       Alert.alert(
         'Success',
         'Payment method added successfully!',
@@ -77,7 +77,7 @@ const PaymentsScreen: React.FC<PaymentsScreenProps> = ({ navigation }) => {
           </View>
 
           <Text style={styles.title}>Payment Methods</Text>
-          
+
           <Text style={styles.subtitle}>
             Add a payment method to make it easier to pay for tasks and manage your account.
           </Text>
@@ -85,14 +85,14 @@ const PaymentsScreen: React.FC<PaymentsScreenProps> = ({ navigation }) => {
           {/* Current Status */}
           <View style={styles.statusContainer}>
             <View style={styles.statusRow}>
-              <Ionicons 
-                name={user?.hasPaymentMethod ? "checkmark-circle" : "alert-circle"} 
-                size={24} 
-                color={user?.hasPaymentMethod ? COLORS.success : COLORS.warning} 
+              <Ionicons
+                name={user?.hasPaymentMethod ? 'checkmark-circle' : 'alert-circle'}
+                size={24}
+                color={user?.hasPaymentMethod ? COLORS.success : COLORS.warning}
               />
               <Text style={styles.statusText}>
-                {user?.hasPaymentMethod 
-                  ? 'Payment method added' 
+                {user?.hasPaymentMethod
+                  ? 'Payment method added'
                   : 'No payment method added'
                 }
               </Text>
@@ -102,22 +102,22 @@ const PaymentsScreen: React.FC<PaymentsScreenProps> = ({ navigation }) => {
           {/* Payment Options */}
           <View style={styles.optionsContainer}>
             <Text style={styles.sectionTitle}>Payment Options</Text>
-            
+
             <View style={styles.optionItem}>
               <Ionicons name="card" size={20} color={COLORS.text} />
               <Text style={styles.optionText}>Credit/Debit Card</Text>
             </View>
-            
+
             <View style={styles.optionItem}>
               <Ionicons name="logo-paypal" size={20} color={COLORS.text} />
               <Text style={styles.optionText}>PayPal</Text>
             </View>
-            
+
             <View style={styles.optionItem}>
               <Ionicons name="logo-apple" size={20} color={COLORS.text} />
               <Text style={styles.optionText}>Apple Pay</Text>
             </View>
-            
+
             <View style={styles.optionItem}>
               <Ionicons name="logo-google" size={20} color={COLORS.text} />
               <Text style={styles.optionText}>Google Pay</Text>

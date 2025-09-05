@@ -20,7 +20,7 @@ interface TaskPostedConfirmationProps {
 const { width } = Dimensions.get('window');
 
 const TaskPostedConfirmation: React.FC<TaskPostedConfirmationProps> = ({ navigation, route }) => {
-  const { taskTitle, budget, matchingPreference } = route.params;
+  const { taskTitle, budget, matchingPreference, taskId } = route.params;
 
   const [checkmarkScale] = useState(new Animated.Value(0));
   const [confettiOpacity] = useState(new Animated.Value(0));
@@ -132,7 +132,7 @@ const TaskPostedConfirmation: React.FC<TaskPostedConfirmationProps> = ({ navigat
           {/* Success Message */}
           <View style={styles.messageContainer}>
             <Text style={styles.emoji}>🎉</Text>
-            <Text style={styles.title}>Your task has been posted!</Text>
+            <Text style={styles.title} testID="post.success">Your task has been posted!</Text>
             <Text style={styles.subtitle}>{getMatchingMessage()}</Text>
           </View>
 
@@ -169,7 +169,19 @@ const TaskPostedConfirmation: React.FC<TaskPostedConfirmationProps> = ({ navigat
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => navigation.navigate('TaskDetails', { taskId: 'new' })}
+              onPress={() => {
+                if (taskId) {
+                  // Navigate to TaskDetails in the MyTasksStack (nested navigation)
+                  navigation.navigate('MyTasksStack', { 
+                    screen: 'TaskDetails', 
+                    params: { taskId } 
+                  });
+                } else {
+                  console.warn('No taskId available for navigation');
+                  Alert.alert('Error', 'Task ID not available. Please try again.');
+                }
+              }}
+              testID="post.viewMyTask"
             >
               <Text style={styles.actionButtonIcon}>🔍</Text>
               <Text style={styles.actionButtonText}>View My Task</Text>
@@ -389,4 +401,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TaskPostedConfirmation; 
+export default TaskPostedConfirmation;

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { auth, db } from '../index';
 import { AuthenticatedRequest } from '../utils/auth';
-import { createError } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 
 export const authController = {
@@ -10,7 +9,8 @@ export const authController = {
       const { email, password, displayName, userType } = req.body;
 
       if (!email || !password || !userType) {
-        throw createError('Email, password, and userType are required', 400);
+        res.status(400).json({ error: 'Email, password, and userType are required' });
+        return;
       }
 
       // Create user in Firebase Auth
@@ -64,7 +64,8 @@ export const authController = {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        throw createError('Email and password are required', 400);
+        res.status(400).json({ error: 'Email and password are required' });
+        return;
       }
 
       // Firebase handles authentication
@@ -87,13 +88,15 @@ export const authController = {
   async getProfile(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
-        throw createError('Authentication required', 401);
+        res.status(401).json({ error: 'Authentication required' });
+        return;
       }
 
       const userDoc = await db.collection('users').doc(req.user.uid).get();
 
       if (!userDoc.exists) {
-        throw createError('User not found', 404);
+        res.status(404).json({ error: 'User not found' });
+        return;
       }
 
       res.json({
@@ -112,7 +115,8 @@ export const authController = {
   async updateProfile(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
-        throw createError('Authentication required', 401);
+        res.status(401).json({ error: 'Authentication required' });
+        return;
       }
 
       const { displayName, bio, skills } = req.body;
@@ -120,9 +124,9 @@ export const authController = {
         updatedAt: new Date(),
       };
 
-      if (displayName) updateData.displayName = displayName;
-      if (bio !== undefined) updateData['profile.bio'] = bio;
-      if (skills) updateData['profile.skills'] = skills;
+      if (displayName) {updateData.displayName = displayName;}
+      if (bio !== undefined) {updateData['profile.bio'] = bio;}
+      if (skills) {updateData['profile.skills'] = skills;}
 
       await db.collection('users').doc(req.user.uid).update(updateData);
 
@@ -144,7 +148,8 @@ export const authController = {
   async deleteAccount(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
-        throw createError('Authentication required', 401);
+        res.status(401).json({ error: 'Authentication required' });
+        return;
       }
 
       // Delete user from Firebase Auth

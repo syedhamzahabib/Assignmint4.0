@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { Alert, ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS, FONTS } from '../constants';
-import { useAuthStore } from '../services/AuthStore';
 import { analytics, ANALYTICS_EVENTS } from '../services/AnalyticsService';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { useAuth } from '../state/AuthProvider';
+import { ROUTES } from '../types/navigation';
+import { mapAuthError } from '../utils/authError';
 
 interface LoginScreenProps {
   navigation: any;
@@ -23,49 +17,50 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
-  const { signIn, isLoading } = useAuthStore();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { enterGuest } = useAuth();
 
   const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+    setError('');
+    const e = email.trim().toLowerCase();
+    
+    // Validation
+    if (!e || !password) {
+      setError('Email and password are required');
       return;
     }
-
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+    
+    if (!e.includes('@')) {
+      setError('Please enter a valid email address');
       return;
     }
-
-    analytics.track(ANALYTICS_EVENTS.SIGN_IN_START, { email });
-
+    
+    setIsLoading(true);
     try {
-      // Mock user for now - in real app, this would be an API call
-      const mockUser = {
-        id: 'user-123',
-        email,
-        name: 'Test User',
-        hasPaymentMethod: false,
-      };
-      
-      signIn(mockUser);
-      analytics.track(ANALYTICS_EVENTS.SIGN_IN_COMPLETE, { email });
-      navigation.navigate('MainTabs');
-    } catch (error) {
-      Alert.alert('Error', 'Sign in failed. Please try again.');
+      await signInWithEmailAndPassword(auth, e, password);
+      analytics.track(ANALYTICS_EVENTS.SIGN_IN_COMPLETE, { email: e });
+      console.log('✅ Login completed successfully');
+      // AuthProvider will handle navigation to Home automatically
+    } catch (err: any) {
+      console.error('❌ Login failed:', err);
+      setError(mapAuthError(err));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleBackToLanding = () => {
-    navigation.navigate('Landing');
+    navigation.navigate(ROUTES.LANDING);
   };
 
   const handleSignUp = () => {
-    navigation.navigate('SignUp');
+    navigation.navigate(ROUTES.SIGN_UP);
   };
 
   const handleForgotPassword = () => {
-    navigation.navigate('ForgotPassword');
+    navigation.navigate(ROUTES.FORGOT_PASSWORD);
   };
 
   return (
@@ -101,6 +96,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              testID="login.email"
             />
           </View>
 
@@ -116,6 +112,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
+                testID="login.password"
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -130,26 +127,55 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             </View>
           </View>
 
+          {/* Error Display */}
+          {error ? (
+            <Text style={styles.errorText} testID="login.error">
+              {error}
+            </Text>
+          ) : null}
+
           {/* Forgot Password */}
           <TouchableOpacity
             style={styles.forgotPasswordButton}
             onPress={handleForgotPassword}
+            testID="login.forgotPassword"
           >
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
 
           {/* Sign In Button */}
           <TouchableOpacity
-            style={[styles.signInButton, isLoading && styles.disabledButton]}
+            style={[styles.signInButton, (isLoading || !email.trim() || !password) && styles.disabledButton]}
             onPress={handleSignIn}
-            disabled={isLoading}
+            disabled={isLoading || !email.trim() || !password}
             activeOpacity={0.8}
+            testID="login.submit"
           >
             {isLoading ? (
               <ActivityIndicator color={COLORS.white} />
             ) : (
               <Text style={styles.signInButtonText}>Sign In</Text>
             )}
+          </TouchableOpacity>
+
+          {/* Continue as Guest Button */}
+          <TouchableOpacity
+            style={styles.guestButton}
+            onPress={async () => {
+              try {
+                console.log('🔄 Entering guest mode...');
+                await enterGuest();
+                console.log('✅ Guest mode entered successfully');
+                // Navigate to home after entering guest mode
+                // AuthProvider will handle navigation to Home automatically
+              } catch (error) {
+                console.error('❌ Failed to enter guest mode:', error);
+                Alert.alert('Error', 'Failed to enter guest mode. Please try again.');
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.guestButtonText}>Continue as Guest</Text>
           </TouchableOpacity>
 
           {/* Divider */}
@@ -173,7 +199,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           {/* Sign Up Link */}
           <View style={styles.signUpContainer}>
             <Text style={styles.signUpText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={handleSignUp}>
+            <TouchableOpacity onPress={handleSignUp} testID="auth.switchToSignUp">
               <Text style={styles.signUpLink}>Sign up</Text>
             </TouchableOpacity>
           </View>
@@ -262,6 +288,12 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 12,
   },
+  errorText: {
+    color: COLORS.error || '#FF3B30',
+    fontSize: FONTS.sizes.sm,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
   forgotPasswordButton: {
     alignSelf: 'flex-end',
     marginBottom: 24,
@@ -289,6 +321,20 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: FONTS.sizes.md,
     fontWeight: FONTS.weights.semiBold,
+    textAlign: 'center',
+  },
+  guestButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  guestButtonText: {
+    color: COLORS.textSecondary,
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.medium,
     textAlign: 'center',
   },
   divider: {

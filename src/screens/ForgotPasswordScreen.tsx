@@ -28,11 +28,11 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
     }
 
     setIsLoading(true);
-    
+
     try {
       // Mock password reset
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise<void>(resolve => setTimeout(resolve, 2000));
+
       Alert.alert(
         'Reset Link Sent',
         'If an account with that email exists, we\'ve sent a password reset link.',
@@ -76,7 +76,7 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ navigation 
           </View>
 
           <Text style={styles.title}>Forgot your password?</Text>
-          
+
           <Text style={styles.subtitle}>
             Enter your email address and we'll send you a link to reset your password.
           </Text>

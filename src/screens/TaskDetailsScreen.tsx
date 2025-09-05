@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Icon, { Icons } from '../components/common/Icon';
 import { COLORS } from '../constants';
+import API from '../lib/api';
 
 const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
   const { taskId } = route.params || {};
@@ -43,12 +44,23 @@ const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
   };
 
   useEffect(() => {
-    // Simulate loading task data
-    setLoading(true);
-    setTimeout(() => {
-      setTask(mockTask);
-      setLoading(false);
-    }, 1000);
+    const loadTask = async () => {
+      if (!taskId) return;
+      
+      try {
+        setLoading(true);
+        const response = await API.getTask(taskId);
+        console.log('📱 TaskDetails API response:', response);
+        setTask(response.task);
+      } catch (error: any) {
+        console.error('❌ Error loading task:', error);
+        Alert.alert('Error', 'Failed to load task details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTask();
   }, [taskId]);
 
   const handleAccept = () => {
@@ -57,24 +69,24 @@ const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
       'Are you sure you want to accept this task?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Accept', 
+        {
+          text: 'Accept',
           onPress: () => {
             Alert.alert('Success', 'Task accepted! You can now start working on it.');
             navigation.navigate('MyTasks');
-          }
+          },
         },
       ]
     );
   };
 
   const handleNegotiate = () => {
-    navigation.navigate('ChatThread', { 
-      chat: { 
-        id: '1', 
-        name: mockTask.postedBy, 
-        taskTitle: mockTask.title 
-      } 
+    navigation.navigate('ChatThread', {
+      chat: {
+        id: '1',
+        name: mockTask.postedBy,
+        taskTitle: mockTask.title,
+      },
     });
   };
 
@@ -122,10 +134,10 @@ const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} testID="taskDetails.screen">
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -226,16 +238,16 @@ const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
           <Icon name={Icons.share} size={20} color={COLORS.textSecondary} />
         </TouchableOpacity>
-        
+
         <View style={styles.mainActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.negotiateButton]}
             onPress={handleNegotiate}
           >
             <Text style={styles.negotiateButtonText}>Negotiate</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.actionButton, styles.acceptButton]}
             onPress={handleAccept}
           >
@@ -499,4 +511,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TaskDetailsScreen; 
+export default TaskDetailsScreen;

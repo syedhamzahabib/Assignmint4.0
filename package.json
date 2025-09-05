@@ -7,25 +7,42 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest --watchAll=false",
+    "test:ci": "jest --runInBand",
+    "test:auth": "jest tests/auth --runInBand",
+    "validate:screens": "node scripts/validate-screens-doc.js",
+    "check:entry": "node scripts/checkEntry.js",
+    "check:screens-map": "node scripts/checkScreensMap.js",
+    "typecheck": "tsc --noEmit",
+    "lint:fix": "eslint . --fix",
+    "seed:matching": "npx ts-node scripts/seedMatchingData.ts",
+    "seed:matching:clear": "npx ts-node scripts/seedMatchingData.ts clear",
+    "test:matching": "node scripts/testMatching.js",
+    "qa": "cross-env USE_MOCK=true RESERVE_WINDOW_SEC=5 MATCH_WAVE_MINUTES=0.1 tsx qa_smoke/run.ts",
+    "qa:clean": "rimraf qa_smoke",
+    "qa:doctor": "node qa_smoke/doctor.js",
+    "emu:start": "firebase emulators:start --only auth,firestore --import=.firebase-emulator-data --export-on-exit",
+    "detox:build": "detox build -c ios.debug",
+    "detox:test": "detox test -c ios.debug",
+    "e2e": "concurrently -k -s first \"cross-env E2E=true npm run emu:start\" \"npm:detox:build && cross-env E2E=true npm:detox:test\""
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.1.8",
     "@react-native-async-storage/async-storage": "^1.24.0",
-    "@react-native/virtualized-lists": "^0.80.2",
+    "@react-native/virtualized-lists": "^0.79.2",
     "@react-navigation/bottom-tabs": "^7.4.5",
     "@react-navigation/native": "^7.1.17",
     "@react-navigation/stack": "^7.4.5",
-    "expo-modules-core": "^2.5.0",
-    "firebase": "^10.5.0",
+    "dotenv": "^17.2.1",
+    "firebase": "^12.1.0",
     "react": "19.0.0",
     "react-native": "0.79.2",
-    "react-native-gesture-handler": "^2.27.2",
+    "react-native-config": "^1.5.7",
+    "react-native-gesture-handler": "^2.28.0",
     "react-native-reanimated": "^3.19.1",
-    "react-native-safe-area-context": "^5.6.0",
-    "react-native-screens": "^3.37.0",
+    "react-native-safe-area-context": "^4.8.2",
+    "react-native-screens": "^4.13.1",
     "react-native-vector-icons": "^10.3.0",
-    "react-native-worklets": "^0.4.1",
     "semver": "^7.7.2",
     "zustand": "^5.0.7"
   },
@@ -40,15 +57,55 @@
     "@react-native/eslint-config": "0.79.2",
     "@react-native/metro-config": "0.79.2",
     "@react-native/typescript-config": "0.79.2",
-    "@types/jest": "^29.5.13",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.3.0",
     "@types/react": "^19.0.0",
     "@types/react-native-vector-icons": "^6.4.18",
     "@types/react-test-renderer": "^19.0.0",
+    "concurrently": "^9.2.0",
+    "cross-env": "^10.0.0",
+    "detox": "^20.40.2",
     "eslint": "^8.19.0",
-    "jest": "^29.6.3",
+    "firebase-tools": "^14.12.1",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-circus": "^30.0.5",
     "prettier": "2.8.8",
-    "react-test-renderer": "19.0.0",
-    "typescript": "5.0.4"
+    "react-test-renderer": "^19.0.0",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.4.1",
+    "tsx": "^4.20.4",
+    "typescript": "5.0.4",
+    "vitest": "^3.2.4",
+    "whatwg-fetch": "^3.6.20"
+  },
+  "detox": {
+    "testRunner": "jest",
+    "runnerConfig": "e2e/jest.config.js",
+    "apps": {
+      "ios.debug": {
+        "type": "ios.app",
+        "build": "xcodebuild -workspace ios/*.xcworkspace -scheme Assignmint -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build",
+        "binaryPath": "ios/build/Build/Products/Debug-iphonesimulator/Assignmint.app"
+      }
+    },
+    "devices": {
+      "simulator": {
+        "type": "ios.simulator",
+        "device": {
+          "type": "iPhone 16"
+        },
+        "bootArgs": "--no-sandbox"
+      }
+    },
+    "configurations": {
+      "ios.debug": {
+        "device": "simulator",
+        "app": "ios.debug"
+      }
+    }
   },
   "engines": {
     "node": ">=18"
