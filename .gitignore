@@ -26,6 +26,12 @@ android/build/
 google-services.json
 GoogleService-Info.plist
 
+# Firebase admin credentials (NEVER commit these!)
+backend/secure/firebase-admin-key.json
+**/firebase-admin-key.json
+**/*-key.json
+*.pem
+
 # Metro / cache / dist
 dist/
 .cache/
