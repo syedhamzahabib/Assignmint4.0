@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,8 +41,6 @@ bool canSetOtherThreadName();
 /**
  * Get the name of the given thread, or nothing if an error occurs
  * or the functionality is not available.
- *
- * @param tid Thread id
  */
 Optional<std::string> getThreadName(std::thread::id tid);
 
@@ -53,20 +51,14 @@ Optional<std::string> getCurrentThreadName();
 
 /**
  * Set the name of the given thread.
- *
  * Returns false on failure, if an error occurs or the functionality
  * is not available.
- *
- * @param tid Thread id
- * @param name Name to set
  */
 bool setThreadName(std::thread::id tid, StringPiece name);
 bool setThreadName(pthread_t pid, StringPiece name);
 
 /**
  * Equivalent to setThreadName(std::this_thread::get_id(), name);
- *
- * @param name Name to set
  */
 bool setThreadName(StringPiece name);
 } // namespace folly

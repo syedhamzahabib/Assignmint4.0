@@ -29,7 +29,6 @@
     dispatch_once(&onceToken, ^{
         thread = [[SRRunLoopThread alloc] init];
         thread.name = @"com.facebook.SocketRocket.NetworkThread";
-        thread.qualityOfService = NSQualityOfServiceUserInitiated;
         [thread start];
     });
     return thread;
@@ -75,7 +74,7 @@
     }
 }
 
-- (NSRunLoop *)runLoop
+- (NSRunLoop *)runLoop;
 {
     dispatch_group_wait(_waitGroup, DISPATCH_TIME_FOREVER);
     return _runLoop;

@@ -1,4 +1,4 @@
-/* Copyright 2003-2021 Joaquin M Lopez Munoz.
+/* Copyright 2003-2020 Joaquin M Lopez Munoz.
  * Distributed under the Boost Software License, Version 1.0.
  * (See accompanying file LICENSE_1_0.txt or copy at
  * http://www.boost.org/LICENSE_1_0.txt)
@@ -22,7 +22,6 @@
 #include <boost/multi_index/detail/allocator_traits.hpp>
 #include <boost/multi_index/detail/copy_map.hpp>
 #include <boost/multi_index/detail/do_not_copy_elements_tag.hpp>
-#include <boost/multi_index/detail/index_access_sequence.hpp>
 #include <boost/multi_index/detail/node_handle.hpp>
 #include <boost/multi_index/detail/node_type.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
@@ -135,15 +134,6 @@ protected:
     return x;
   }
 
-  template<typename MultiIndexContainer>
-  final_node_type* insert_(
-    const value_type&,final_node_type*& x,MultiIndexContainer* p)
-  {
-    p->final_extract_for_transfer_(
-      x,index_access_sequence<final_type>(&final()));
-    return x;
-  }
-
   final_node_type* insert_(
     const value_type& v,index_node_type*,final_node_type*& x,lvalue_tag)
   {
@@ -162,8 +152,7 @@ protected:
     return x;
   }
 
-  template<typename Dst>
-  void extract_(index_node_type*,Dst){}
+  void extract_(index_node_type*){}
 
   void clear_(){}
 
@@ -214,10 +203,6 @@ protected:
   final_type&       final(){return *static_cast<final_type*>(this);}
   const final_type& final()const{return *static_cast<const final_type*>(this);}
 
-  template<typename Index>
-  static typename Index::final_type& final(Index& x) /* cross-index access */
-    {return static_cast<typename Index::final_type&>(x);}
-
   final_node_type* final_header()const{return final().header();}
 
   bool      final_empty_()const{return final().empty_();}
@@ -236,10 +221,6 @@ protected:
     {return final().insert_ref_(t);}
   std::pair<final_node_type*,bool> final_insert_nh_(final_node_handle_type& nh)
     {return final().insert_nh_(nh);}
-
-  template<typename Index>
-  std::pair<final_node_type*,bool> final_transfer_(Index& x,final_node_type* n)
-    {return final().transfer_(x,n);}
 
   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
   std::pair<final_node_type*,bool> final_emplace_(
@@ -279,24 +260,11 @@ protected:
     return final().extract_(x);
   } 
 
-  template<typename Dst>
-  void final_extract_for_transfer_(final_node_type* x,Dst dst)
-  {
-    final().extract_for_transfer_(x,dst);
-  } 
-
   void final_erase_(final_node_type* x){final().erase_(x);}
 
   void final_delete_node_(final_node_type* x){final().delete_node_(x);}
   void final_delete_all_nodes_(){final().delete_all_nodes_();}
   void final_clear_(){final().clear_();}
-
-  template<typename Index>
-  void final_transfer_range_(
-    Index& x,
-    BOOST_DEDUCED_TYPENAME Index::iterator first,
-    BOOST_DEDUCED_TYPENAME Index::iterator last)
-    {final().transfer_range_(x,first,last);}
 
   void final_swap_(final_type& x){final().swap_(x);}
 

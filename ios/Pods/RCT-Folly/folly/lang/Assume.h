@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/Portability.h>
-#include <folly/lang/Hint.h>
 
 namespace folly {
 
@@ -52,9 +51,7 @@ namespace folly {
  * implemented as a function to force the evaluation of its argument, contrary
  * to the builtin, which cannot used with expressions that have side-effects.
  */
-FOLLY_ALWAYS_INLINE void assume(bool cond) {
-  compiler_may_unsafely_assume(cond);
-}
+FOLLY_ALWAYS_INLINE void assume(bool cond);
 
 /**
  * assume_unreachable() informs the compiler that the statement is not reachable
@@ -65,18 +62,8 @@ FOLLY_ALWAYS_INLINE void assume(bool cond) {
  * evaluation of switch/case statements when all the possible values are
  * provably enumerated.
  */
-[[noreturn]] FOLLY_ALWAYS_INLINE void assume_unreachable() {
-  compiler_may_unsafely_assume_unreachable();
-}
+[[noreturn]] FOLLY_ALWAYS_INLINE void assume_unreachable();
 
 } // namespace folly
 
-/**
- * Inform the compiler that the statement is not reachable at runtime, and
- * disable compiler warnings.
- */
-#define FOLLY_ASSUME_UNREACHABLE()                  \
-  FOLLY_PUSH_WARNING                                \
-  FOLLY_CLANG_DISABLE_WARNING("-Wunreachable-code") \
-  ::folly::assume_unreachable();                    \
-  FOLLY_POP_WARNING
+#include <folly/lang/Assume-inl.h>

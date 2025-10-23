@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ class AtomicStruct {
   static_assert(alignof(T) <= alignof(Raw), "underlying type is under-aligned");
   static_assert(sizeof(T) <= sizeof(Raw), "underlying type is under-sized");
   static_assert(
-      std::is_trivial<T>::value || std::is_trivially_copyable<T>::value,
+      std::is_trivial<T>::value || is_trivially_copyable<T>::value,
       "target type must be trivially copyable");
 
   Atom<Raw> data;

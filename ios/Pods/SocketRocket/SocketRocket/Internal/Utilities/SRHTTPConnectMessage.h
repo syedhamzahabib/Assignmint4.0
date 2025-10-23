@@ -8,7 +8,6 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <CFNetwork/CFNetwork.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace {
 
 struct poison {};
 
-[[maybe_unused]] FOLLY_ERASE void memrchr(poison) noexcept {}
+FOLLY_MAYBE_UNUSED FOLLY_ERASE void memrchr(poison) noexcept {}
 
 } // namespace
 
@@ -50,26 +50,44 @@ void const* memrchr_fallback(void const* s, int c, std::size_t len) noexcept {
   return nullptr;
 }
 
+} // namespace detail
+
+namespace c_string_detail {
+
+struct invoke_fallback_memrchr_fn {
+  template <typename... A>
+  FOLLY_MAYBE_UNUSED FOLLY_ERASE auto operator()(A... a) const noexcept
+      -> decltype(detail::memrchr_fallback(a...)) {
+    return detail::memrchr_fallback(a...);
+  }
+};
+struct invoke_primary_memrchr_fn {
+  template <typename... A>
+  FOLLY_MAYBE_UNUSED FOLLY_ERASE auto operator()(A... a) const noexcept
+      -> decltype(::memrchr(a...)) {
+    return ::memrchr(a...);
+  }
+};
+
+} // namespace c_string_detail
+
 namespace {
 
-FOLLY_CREATE_QUAL_INVOKER(invoke_primary_memrchr_fn, ::memrchr);
-FOLLY_CREATE_QUAL_INVOKER(invoke_fallback_memrchr_fn, memrchr_fallback);
-
-using invoke_memrchr_fn = invoke_first_match<
-    invoke_primary_memrchr_fn,
-    invoke_fallback_memrchr_fn,
-    tag_t<>>;
-constexpr invoke_memrchr_fn invoke_memrchr{};
+template <typename... A>
+using invoke_memrchr_fn = conditional_t<
+    is_invocable_v<c_string_detail::invoke_primary_memrchr_fn, A...>,
+    c_string_detail::invoke_primary_memrchr_fn,
+    c_string_detail::invoke_fallback_memrchr_fn>;
+template <typename... A>
+constexpr invoke_memrchr_fn<A...> invoke_memrchr{};
 
 } // namespace
 
-} // namespace detail
-
 void* memrchr(void* s, int c, std::size_t len) noexcept {
-  return detail::invoke_memrchr(s, c, len);
+  return invoke_memrchr<void*, int, std::size_t>(s, c, len);
 }
 void const* memrchr(void const* s, int c, std::size_t len) noexcept {
-  return detail::invoke_memrchr(s, c, len);
+  return invoke_memrchr<void const*, int, std::size_t>(s, c, len);
 }
 
 std::size_t strlcpy(

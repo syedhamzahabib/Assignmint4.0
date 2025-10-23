@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,10 @@
 // solve that by pretending we have it here in the header and
 // then enable our implementation on the source side so that
 // gets linked in instead.
-#if defined(__MACH__) && defined(__CLOCK_AVAILABILITY)
+#if __MACH__ &&                                                       \
+        ((!defined(TARGET_OS_OSX) || TARGET_OS_OSX) &&                \
+         (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_12)) || \
+    (TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0))
 
 #ifdef FOLLY_HAVE_CLOCK_GETTIME
 #undef FOLLY_HAVE_CLOCK_GETTIME
@@ -35,10 +38,6 @@
 
 #define FOLLY_HAVE_CLOCK_GETTIME 1
 #define FOLLY_FORCE_CLOCK_GETTIME_DEFINITION 1
-
-#else
-
-#define FOLLY_FORCE_CLOCK_GETTIME_DEFINITION 0
 
 #endif
 
@@ -50,7 +49,9 @@
 #define CLOCK_PROCESS_CPUTIME_ID 2
 #define CLOCK_THREAD_CPUTIME_ID 3
 
+#if !defined(__clockid_t_defined) && !defined(_CLOCKID_T) && !defined(__APPLE__)
 typedef uint8_t clockid_t;
+#endif
 extern "C" int clock_gettime(clockid_t clk_id, struct timespec* ts);
 extern "C" int clock_getres(clockid_t clk_id, struct timespec* ts);
 #endif

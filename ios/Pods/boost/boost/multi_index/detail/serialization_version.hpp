@@ -1,4 +1,4 @@
-/* Copyright 2003-2023 Joaquin M Lopez Munoz.
+/* Copyright 2003-2013 Joaquin M Lopez Munoz.
  * Distributed under the Boost Software License, Version 1.0.
  * (See accompanying file LICENSE_1_0.txt or copy at
  * http://www.boost.org/LICENSE_1_0.txt)
@@ -14,7 +14,8 @@
 #endif
 
 #include <boost/config.hpp> /* keep it first to prevent nasty warns in MSVC */
-#include <boost/core/serialization.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/serialization/version.hpp>
 
 namespace boost{
 
@@ -41,11 +42,7 @@ struct serialization_version
 private:
   friend class boost::serialization::access;
 
-  template<class Archive>
-  void serialize(Archive& ar,const unsigned int version)
-  {
-    core::split_member(ar,*this,version);
-  }
+  BOOST_SERIALIZATION_SPLIT_MEMBER()
 
   template<class Archive>
   void save(Archive&,const unsigned int)const{}

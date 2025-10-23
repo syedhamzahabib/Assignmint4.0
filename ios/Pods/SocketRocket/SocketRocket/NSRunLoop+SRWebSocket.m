@@ -15,7 +15,7 @@
 #import "SRRunLoopThread.h"
 
 // Required for object file to always be linked.
-void import_NSRunLoop_SRWebSocket(void) { }
+void import_NSRunLoop_SRWebSocket() { }
 
 @implementation NSRunLoop (SRWebSocket)
 

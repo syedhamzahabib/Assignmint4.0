@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Alert, ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS, FONTS } from '../constants';
 import { analytics, ANALYTICS_EVENTS } from '../services/AnalyticsService';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { signInEmail } from '../lib/auth';
+import { signInWithGoogle } from '../lib/authGoogle';
+import { signInWithApple } from '../lib/authApple';
 import { useAuth } from '../state/AuthProvider';
 import { ROUTES } from '../types/navigation';
-import { mapAuthError } from '../utils/authError';
+import { AuthToast } from '../components/AuthToast';
+import { logAuthError } from '../utils/authErrorHelper';
 
 interface LoginScreenProps {
   navigation: any;
@@ -19,33 +21,41 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<any>(null);
+  const [showToast, setShowToast] = useState(false);
   const { enterGuest } = useAuth();
 
   const handleSignIn = async () => {
-    setError('');
+    setError(null);
+    setShowToast(false);
     const e = email.trim().toLowerCase();
     
     // Validation
     if (!e || !password) {
-      setError('Email and password are required');
+      const validationError = { code: 'validation/required', message: 'Email and password are required' };
+      setError(validationError);
+      setShowToast(true);
       return;
     }
     
     if (!e.includes('@')) {
-      setError('Please enter a valid email address');
+      const validationError = { code: 'auth/invalid-email', message: 'Please enter a valid email address' };
+      setError(validationError);
+      setShowToast(true);
       return;
     }
     
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, e, password);
+      await signInEmail(e, password);
       analytics.track(ANALYTICS_EVENTS.SIGN_IN_COMPLETE, { email: e });
       console.log('✅ Login completed successfully');
       // AuthProvider will handle navigation to Home automatically
     } catch (err: any) {
       console.error('❌ Login failed:', err);
-      setError(mapAuthError(err));
+      logAuthError(err, 'Login');
+      setError(err);
+      setShowToast(true);
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +71,38 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleForgotPassword = () => {
     navigation.navigate(ROUTES.FORGOT_PASSWORD);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+      analytics.track(ANALYTICS_EVENTS.SIGN_IN_COMPLETE, { method: 'google' });
+      console.log('✅ Google login completed successfully');
+      // AuthProvider will handle navigation to Home automatically
+    } catch (err: any) {
+      console.error('❌ Google login failed:', err);
+      setError(err.message || 'Google Sign-In is not available. Please use Email/Password authentication.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await signInWithApple();
+      analytics.track(ANALYTICS_EVENTS.SIGN_IN_COMPLETE, { method: 'apple' });
+      console.log('✅ Apple login completed successfully');
+      // AuthProvider will handle navigation to Home automatically
+    } catch (err: any) {
+      console.error('❌ Apple login failed:', err);
+      setError(err.message || 'Apple Sign-In is not available on simulator. Please test on a physical device.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -186,14 +228,28 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           </View>
 
           {/* OAuth Buttons */}
-          <TouchableOpacity style={styles.oauthButton} disabled>
+          <TouchableOpacity 
+            style={styles.oauthButton} 
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+            activeOpacity={0.8}
+          >
             <Ionicons name="logo-google" size={20} color={COLORS.text} />
-            <Text style={styles.oauthButtonText}>Continue with Google</Text>
+            <Text style={styles.oauthButtonText}>
+              Continue with Google
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.oauthButton} disabled>
-            <Ionicons name="logo-apple" size={20} color={COLORS.text} />
-            <Text style={styles.oauthButtonText}>Continue with Apple</Text>
+          <TouchableOpacity 
+            style={[styles.oauthButton, styles.disabledButton]} 
+            onPress={() => {}}
+            disabled={true}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="logo-apple" size={20} color={COLORS.textSecondary} />
+            <Text style={[styles.oauthButtonText, { color: COLORS.textSecondary }]}>
+               Sign in with Apple (Coming Soon)
+            </Text>
           </TouchableOpacity>
 
           {/* Sign Up Link */}
@@ -205,6 +261,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
+      
+      <AuthToast
+        error={error}
+        visible={showToast}
+        onDismiss={() => setShowToast(false)}
+        onRetry={error && error.code !== 'auth/user-not-found' && error.code !== 'auth/email-already-in-use' ? handleSignIn : undefined}
+      />
     </SafeAreaView>
   );
 };
@@ -362,7 +425,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     marginBottom: 12,
-    opacity: 0.5,
   },
   oauthButtonText: {
     marginLeft: 8,

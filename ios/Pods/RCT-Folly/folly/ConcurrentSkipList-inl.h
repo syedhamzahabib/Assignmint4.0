@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// @author: Xin Liu <xliux@fb.com>
 
 #pragma once
 
@@ -28,7 +30,6 @@
 #include <boost/random.hpp>
 #include <glog/logging.h>
 
-#include <folly/ConstexprMath.h>
 #include <folly/Memory.h>
 #include <folly/ThreadLocal.h>
 #include <folly/synchronization/MicroSpinLock.h>
@@ -214,7 +215,9 @@ class SkipListRandomHeight {
       p *= kProb;
       sizeLimit *= kProbInv;
       lookupTable_[i] = lookupTable_[i - 1] + p;
-      sizeLimitTable_[i] = folly::constexpr_clamp_cast<size_t>(sizeLimit);
+      sizeLimitTable_[i] = sizeLimit > kMaxSizeLimit
+          ? kMaxSizeLimit
+          : static_cast<size_t>(sizeLimit);
     }
     lookupTable_[kMaxHeight - 1] = 1;
     sizeLimitTable_[kMaxHeight - 1] = kMaxSizeLimit;
@@ -284,11 +287,11 @@ class NodeRecycler<
       // correctness.
       std::lock_guard<MicroSpinLock> g(lock_);
       ret = refs_.fetch_add(-1, std::memory_order_acq_rel);
-      if (ret == 1) {
-        // When releasing the last reference, it is safe to remove all the
-        // current nodes in the recycler, as we already acquired the lock here
-        // so no more new nodes can be added, even though new accessors may be
-        // added after this.
+      if (ret == 0) {
+        // When refs_ reachs 0, it is safe to remove all the current nodes
+        // in the recycler, as we already acquired the lock here so no more
+        // new nodes can be added, even though new accessors may be added
+        // after this.
         newNodes.swap(nodes_);
         dirty_.store(false, std::memory_order_relaxed);
       }

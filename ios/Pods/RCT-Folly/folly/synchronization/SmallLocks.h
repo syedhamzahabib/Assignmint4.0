@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,14 @@
  * longer it waits between attempts to acquire, so newer waiters are
  * more likely to get the mutex.  For the intended use-case this is
  * fine.
+ *
+ * @author Keith Adams <kma@fb.com>
+ * @author Jordan DeLong <delong.j@fb.com>
  */
 
 #include <folly/MicroLock.h>
 #include <folly/Portability.h>
 #include <folly/synchronization/MicroSpinLock.h>
+#if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_PPC64
 #include <folly/synchronization/PicoSpinLock.h>
+#endif

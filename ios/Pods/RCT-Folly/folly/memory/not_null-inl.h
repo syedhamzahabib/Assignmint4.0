@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,13 +25,16 @@ namespace folly {
 
 namespace detail {
 template <typename T>
-inline constexpr bool is_not_null_v = is_instantiation_of_v<not_null, T>;
+struct is_not_null_helper : std::false_type {};
 template <typename T>
-struct is_not_null : std::bool_constant<is_not_null_v<T>> {};
+struct is_not_null_helper<not_null<T>> : std::true_type {};
+template <typename T>
+struct is_not_null
+    : is_not_null_helper<std::remove_cv_t<std::remove_reference_t<T>>> {};
+template <typename T>
+inline constexpr bool is_not_null_v = is_not_null<T>::value;
 
-template <
-    typename T,
-    typename = std::enable_if_t<!is_not_null_v<remove_cvref_t<T>>>>
+template <typename T, typename = std::enable_if_t<!is_not_null_v<T>>>
 auto maybeUnwrap(T&& t) {
   return std::forward<T>(t);
 }
@@ -493,30 +496,15 @@ not_null_shared_ptr<T> const_pointer_cast(not_null_shared_ptr<U>&& r) {
 template <typename T, typename U>
 not_null_shared_ptr<T> reinterpret_pointer_cast(
     const not_null_shared_ptr<U>& r) {
-  auto p = std::reinterpret_pointer_cast<T, U>(r.unwrap());
+  auto p = folly::reinterpret_pointer_cast<T, U>(r.unwrap());
   return not_null_shared_ptr<T>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
 template <typename T, typename U>
 not_null_shared_ptr<T> reinterpret_pointer_cast(not_null_shared_ptr<U>&& r) {
-  auto p = std::reinterpret_pointer_cast<T, U>(std::move(r).unwrap());
+  auto p = folly::reinterpret_pointer_cast<T, U>(std::move(r).unwrap());
   return not_null_shared_ptr<T>(
       std::move(p), detail::secret_guaranteed_not_null::get());
 }
-
-static_assert(
-    std::is_same_v<decltype(not_null(std::declval<int*>())), not_null<int*>>);
-
-static_assert(std::is_same_v<
-              decltype(not_null(std::declval<std::unique_ptr<int>>())),
-              not_null_unique_ptr<int>>);
-
-static_assert(std::is_same_v<
-              decltype(not_null(std::declval<std::unique_ptr<int>&&>())),
-              not_null_unique_ptr<int>>);
-
-static_assert(std::is_same_v<
-              decltype(not_null(std::declval<const std::shared_ptr<int>&>())),
-              not_null_shared_ptr<int>>);
 
 } // namespace folly

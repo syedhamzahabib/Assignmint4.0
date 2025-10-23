@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,12 +134,12 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
   while (curIov < count) {
     ssize_t res = 0;
     if (isRead) {
-      res = folly::fileops::read(fd, curBase, (unsigned int)curLen);
+      res = read(fd, curBase, (unsigned int)curLen);
       if (res == 0 && curLen != 0) {
         break; // End of File
       }
     } else {
-      res = folly::fileops::write(fd, curBase, (unsigned int)curLen);
+      res = write(fd, curBase, (unsigned int)curLen);
       // Write of zero bytes is fine.
     }
 

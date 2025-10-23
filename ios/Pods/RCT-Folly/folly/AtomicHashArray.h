@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@
  *  Check out AtomicHashMap.h for more thorough documentation on perf and
  *  general pros and cons relative to other hash maps.
  *
+ *  @author Spencer Ahrens <sahrens@fb.com>
+ *  @author Jordan DeLong <delong.j@fb.com>
  */
 
 #pragma once
@@ -44,7 +46,7 @@ struct AtomicHashArrayLinearProbeFcn {
     idx += 1; // linear probing
 
     // Avoid modulus because it's slow
-    return FOLLY_LIKELY(idx < capacity) ? idx : (idx - capacity);
+    return LIKELY(idx < capacity) ? idx : (idx - capacity);
   }
 };
 
@@ -54,7 +56,7 @@ struct AtomicHashArrayQuadraticProbeFcn {
     idx += numProbes; // quadratic probing
 
     // Avoid modulus because it's slow
-    return FOLLY_LIKELY(idx < capacity) ? idx : (idx - capacity);
+    return LIKELY(idx < capacity) ? idx : (idx - capacity);
   }
 };
 
@@ -197,7 +199,7 @@ class AtomicHashArray {
    *   allowed to be different from the type of keys actually stored (KeyT).
    *
    *   This enables use cases where materializing the key is costly and usually
-   *   redundant, e.g., canonicalizing/interning a set of strings and being able
+   *   redudant, e.g., canonicalizing/interning a set of strings and being able
    *   to look up by StringPiece. To use this feature, LookupHashFcn must take
    *   a LookupKeyT, and LookupEqualFcn must take KeyT and LookupKeyT as first
    *   and second parameter, respectively.
@@ -421,7 +423,7 @@ class AtomicHashArray {
   inline size_t keyToAnchorIdx(const LookupKeyT k) const {
     const size_t hashVal = LookupHashFcn()(k);
     const size_t probe = hashVal & kAnchorMask_;
-    return FOLLY_LIKELY(probe < capacity_) ? probe : hashVal % capacity_;
+    return LIKELY(probe < capacity_) ? probe : hashVal % capacity_;
   }
 
 }; // AtomicHashArray

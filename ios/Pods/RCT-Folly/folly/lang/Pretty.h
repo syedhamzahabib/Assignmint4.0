@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,18 +29,12 @@ namespace detail {
 template <std::size_t S>
 using pretty_carray = c_array<char, S>;
 
-static constexpr char* pretty_carray_copy(
-    char* dest, const char* src, std::size_t n) {
-  for (std::size_t i = 0; i < n; ++i) {
-    dest[i] = src[i];
-  }
-  return dest + n;
-}
-
 template <std::size_t S>
 static constexpr pretty_carray<S> pretty_carray_from(char const (&in)[S]) {
   pretty_carray<S> out{};
-  pretty_carray_copy(out.data, in, S);
+  for (std::size_t i = 0; i < S; ++i) {
+    out.data[i] = in[i];
+  }
   return out;
 }
 
@@ -86,7 +80,7 @@ using pretty_default_tag = std::conditional_t< //
 
 template <typename T>
 static constexpr auto pretty_raw(pretty_tag_msc) {
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
   return pretty_carray_from(__FUNCSIG__);
 #endif
 }
@@ -129,17 +123,18 @@ struct pretty_name_zarray {
   static constexpr auto size = info.e - info.b;
   static constexpr auto zarray_() {
     pretty_carray<size + 1> data{};
-    pretty_carray_copy(data.data, raw.data + info.b, size);
+    for (std::size_t i = 0; i < size; ++i) {
+      data.data[i] = raw.data[info.b + i];
+    }
     data.data[size] = 0;
     return data;
   }
   static constexpr pretty_carray<size + 1> zarray = zarray_();
 };
 
-template <typename T>
-constexpr const auto& pretty_name_carray() {
-  return detail::pretty_name_zarray<T, detail::pretty_default_tag>::zarray;
-}
+template <typename T, typename Tag>
+constexpr pretty_carray<pretty_name_zarray<T, Tag>::size + 1>
+    pretty_name_zarray<T, Tag>::zarray;
 
 } // namespace detail
 
@@ -153,7 +148,7 @@ constexpr const auto& pretty_name_carray() {
 //  present in the type name as it would be symbolized.
 template <typename T>
 constexpr char const* pretty_name() {
-  return detail::pretty_name_carray<T>().data;
+  return detail::pretty_name_zarray<T, detail::pretty_default_tag>::zarray.data;
 }
 
 } // namespace folly

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ class Arena {
         bytesUsed_(0),
         sizeLimit_(sizeLimit),
         maxAlign_(maxAlign) {
-    if (!valid_align_value(maxAlign_)) {
+    if ((maxAlign_ & (maxAlign_ - 1)) || maxAlign_ > alignof(Block)) {
       throw_exception<std::invalid_argument>(
           folly::to<std::string>("Invalid maxAlign: ", maxAlign_));
     }
@@ -89,7 +89,7 @@ class Arena {
     bytesUsed_ += size;
 
     assert(ptr_ <= end_);
-    if (FOLLY_LIKELY((size_t)(end_ - ptr_) >= size)) {
+    if (LIKELY((size_t)(end_ - ptr_) >= size)) {
       // Fast path: there's enough room in the current block
       char* r = ptr_;
       ptr_ += size;
@@ -99,9 +99,9 @@ class Arena {
 
     if (canReuseExistingBlock(size)) {
       currentBlock_++;
-      char* r = align(currentBlock_->start());
+      char* r = currentBlock_->start();
       ptr_ = r + size;
-      end_ = currentBlock_->start() + blockGoodAllocSize() - sizeof(Block);
+      end_ = r + blockGoodAllocSize() - sizeof(Block);
       assert(ptr_ <= end_);
       assert(isAligned(r));
       return r;
@@ -127,8 +127,9 @@ class Arena {
       return;
     }
     currentBlock_ = blocks_.begin();
-    ptr_ = align(currentBlock_->start());
-    end_ = currentBlock_->start() + blockGoodAllocSize() - sizeof(Block);
+    char* start = currentBlock_->start();
+    ptr_ = start;
+    end_ = start + blockGoodAllocSize() - sizeof(Block);
     assert(ptr_ <= end_);
   }
 
@@ -228,8 +229,6 @@ class Arena {
     }
     return realSize & ~maxAl;
   }
-
-  char* align(char* ptr) { return align_ceil(ptr, maxAlign_); }
 
   // cache_last<true> makes the list keep a pointer to the last element, so we
   // have push_back() and constant time splice_after()

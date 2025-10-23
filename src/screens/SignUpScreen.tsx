@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { Alert, ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS, FONTS } from '../constants';
 import { analytics, ANALYTICS_EVENTS } from '../services/AnalyticsService';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, set } from 'firebase/database';
-import { ref as storageRef, uploadString } from 'firebase/storage';
-import { auth, db, database, storage } from '../lib/firebase';
+import { auth } from '../lib/firebase';
+import { signInWithGoogle } from '../lib/authGoogle';
+import { signInWithApple } from '../lib/authApple';
 import { ROUTES } from '../types/navigation';
-import { mapAuthError } from '../utils/authError';
+import { AuthToast } from '../components/AuthToast';
+import { logAuthError } from '../utils/authErrorHelper';
 
 interface SignUpScreenProps {
   navigation: any;
@@ -23,36 +22,48 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<any>(null);
+  const [showToast, setShowToast] = useState(false);
   const [displayName, setDisplayName] = useState('');
 
   const handleSignUp = async () => {
-    setError('');
+    setError(null);
+    setShowToast(false);
     const e = email.trim().toLowerCase();
     
     // Validation
     if (!displayName.trim()) {
-      setError('Display name is required');
+      const validationError = { code: 'validation/required', message: 'Display name is required' };
+      setError(validationError);
+      setShowToast(true);
       return;
     }
     
     if (!e || !password) {
-      setError('Please fill all fields');
+      const validationError = { code: 'validation/required', message: 'Please fill all fields' };
+      setError(validationError);
+      setShowToast(true);
       return;
     }
     
     if (!e.includes('@')) {
-      setError('Please enter a valid email address');
+      const validationError = { code: 'auth/invalid-email', message: 'Please enter a valid email address' };
+      setError(validationError);
+      setShowToast(true);
       return;
     }
     
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      const validationError = { code: 'auth/weak-password', message: 'Password must be at least 6 characters long' };
+      setError(validationError);
+      setShowToast(true);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      const validationError = { code: 'validation/password-mismatch', message: 'Passwords do not match' };
+      setError(validationError);
+      setShowToast(true);
       return;
     }
 
@@ -60,54 +71,34 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
     setIsLoading(true);
     
     try {
-      console.log('🚀 Starting signup process with Firebase Web SDK...');
+      console.log('🚀 Starting signup process...');
       console.log('📧 Email:', e);
       console.log('👤 Display Name:', displayName);
       console.log('🔐 Password length:', password.length);
       
-      // 1) Native Firebase Auth - this must succeed
-      console.log('📝 Creating Firebase user with Web SDK...');
-      const cred = await createUserWithEmailAndPassword(auth, e, password);
-      console.log('✅ Firebase user created:', cred.user.uid);
+      // Create user with email and password using React Native Firebase
+      const userCredential = await auth().createUserWithEmailAndPassword(e, password);
+      console.log('✅ User created successfully:', userCredential.user.uid);
       
-      // 2) Update profile with display name
-      console.log('👤 Updating user profile...');
-      await updateProfile(cred.user, { displayName });
-      console.log('✅ Profile updated with display name');
-
-      // 3) Firestore profile - this must succeed
-      console.log('💾 Creating Firestore profile...');
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        displayName,
-        email: e,
-        photoURL: cred.user.photoURL ?? null,
-        role: 'user',
-        stripeCustomerId: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      console.log('✅ Firestore profile created');
-
-      // 4) Non-blocking operations (RTDB and Storage seeds)
-      console.log('🌱 Starting non-blocking operations...');
-      const nonBlockingOps = [
-        set(ref(database, `users/${cred.user.uid}/profile`), {
-          displayName,
-          email: e,
-          createdAt: Date.now(),
-        }),
-        uploadString(ref(storage, `users/${cred.user.uid}/hello.txt`), 'Hi', 'raw'),
-      ];
-      await Promise.allSettled(nonBlockingOps);
-      console.log('✅ Non-blocking operations completed');
-
+      // Send email verification
+      await userCredential.user.sendEmailVerification();
+      console.log('✅ Verification email sent!');
+      
       analytics.track(ANALYTICS_EVENTS.SIGN_UP_COMPLETE, { email: e });
-              // AuthProvider will handle navigation to Home automatically
       console.log('🎉 Signup completed successfully');
+      
+      // Show success message
+      Alert.alert(
+        'Account Created!', 
+        'Please check your email and click the verification link to complete your registration.',
+        [{ text: 'OK', onPress: () => navigation.navigate(ROUTES.LOGIN) }]
+      );
       
     } catch (err: any) {
       console.error('[AUTH] SIGNUP_ERROR', err);
-      setError(mapAuthError(err));
+      logAuthError(err, 'SignUp');
+      setError(err);
+      setShowToast(true);
     } finally {
       setIsLoading(false);
     }
@@ -119,6 +110,38 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
 
   const handleSignIn = () => {
     navigation.navigate(ROUTES.LOGIN);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+      analytics.track(ANALYTICS_EVENTS.SIGN_UP_COMPLETE, { method: 'google' });
+      console.log('✅ Google signup completed successfully');
+      // AuthProvider will handle navigation to Home automatically
+    } catch (err: any) {
+      console.error('❌ Google signup failed:', err);
+      setError(err.message || 'Google Sign-In is not available. Please use Email/Password authentication.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await signInWithApple();
+      analytics.track(ANALYTICS_EVENTS.SIGN_UP_COMPLETE, { method: 'apple' });
+      console.log('✅ Apple signup completed successfully');
+      // AuthProvider will handle navigation to Home automatically
+    } catch (err: any) {
+      console.error('❌ Apple signup failed:', err);
+      setError(err.message || 'Apple Sign-In is not available on simulator. Please test on a physical device.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -257,14 +280,28 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
           </View>
 
           {/* OAuth Buttons */}
-          <TouchableOpacity style={styles.oauthButton} disabled>
+          <TouchableOpacity 
+            style={styles.oauthButton} 
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+            activeOpacity={0.8}
+          >
             <Ionicons name="logo-google" size={20} color={COLORS.text} />
-            <Text style={styles.oauthButtonText}>Continue with Google</Text>
+            <Text style={styles.oauthButtonText}>
+              Continue with Google
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.oauthButton} disabled>
-            <Ionicons name="logo-apple" size={20} color={COLORS.text} />
-            <Text style={styles.oauthButtonText}>Continue with Apple</Text>
+          <TouchableOpacity 
+            style={[styles.oauthButton, styles.disabledButton]} 
+            onPress={() => {}}
+            disabled={true}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="logo-apple" size={20} color={COLORS.textSecondary} />
+            <Text style={[styles.oauthButtonText, { color: COLORS.textSecondary }]}>
+               Sign in with Apple (Coming Soon)
+            </Text>
           </TouchableOpacity>
 
           {/* Sign In Link */}
@@ -276,6 +313,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
+      
+      <AuthToast
+        error={error}
+        visible={showToast}
+        onDismiss={() => setShowToast(false)}
+        onRetry={error && error.code !== 'auth/email-already-in-use' && error.code !== 'validation/password-mismatch' ? handleSignUp : undefined}
+      />
     </SafeAreaView>
   );
 };
@@ -415,7 +459,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     marginBottom: 12,
-    opacity: 0.5,
   },
   oauthButtonText: {
     marginLeft: 8,

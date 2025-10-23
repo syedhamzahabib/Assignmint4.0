@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,38 @@
  * limitations under the License.
  */
 
+// @author: Andrei Alexandrescu (aalexandre)
 // String type.
 
 #pragma once
 
-#include <algorithm>
 #include <atomic>
-#include <cassert>
 #include <cstddef>
-#include <cstring>
 #include <iosfwd>
 #include <limits>
 #include <stdexcept>
-#include <string>
-#include <string_view>
 #include <type_traits>
-#include <utility>
 
-#include <fmt/format.h>
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view>
+#endif
+
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+
+#include <algorithm>
+#include <cassert>
+#include <cstring>
+#include <string>
+#include <utility>
+
 #include <folly/Traits.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Assume.h>
-#include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
-
-#if FOLLY_CPLUSPLUS >= 202002L
-#include <compare>
-#endif
 
 FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
@@ -368,8 +368,6 @@ class fbstring_core {
 
   FOLLY_NOINLINE
   void reserve(size_t minCapacity, bool disableSSO = FBSTRING_DISABLE_SSO) {
-    FOLLY_PUSH_WARNING
-    FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
     switch (category()) {
       case Category::isSmall:
         reserveSmall(minCapacity, disableSSO);
@@ -383,7 +381,6 @@ class fbstring_core {
       default:
         folly::assume_unreachable();
     }
-    FOLLY_POP_WARNING
     assert(capacity() >= minCapacity);
   }
 
@@ -403,8 +400,7 @@ class fbstring_core {
       auto maybeSmallSize = size_t(maxSmallSize) -
           size_t(static_cast<UChar>(small_[maxSmallSize]));
       // With this syntax, GCC and Clang generate a CMOV instead of a branch.
-      ret =
-          (static_cast<ptrdiff_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
+      ret = (static_cast<ssize_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
     } else {
       ret = (category() == Category::isSmall) ? smallSize() : ret;
     }
@@ -412,8 +408,6 @@ class fbstring_core {
   }
 
   size_t capacity() const {
-    FOLLY_PUSH_WARNING
-    FOLLY_CLANG_DISABLE_WARNING("-Wcovered-switch-default")
     switch (category()) {
       case Category::isSmall:
         return maxSmallSize;
@@ -429,7 +423,6 @@ class fbstring_core {
       default:
         break;
     }
-    FOLLY_POP_WARNING
     return ml_.capacity();
   }
 
@@ -484,20 +477,13 @@ class fbstring_core {
       size_t oldcnt = dis->refCount_.fetch_sub(1, std::memory_order_acq_rel);
       assert(oldcnt > 0);
       if (oldcnt == 1) {
-        ::free(dis);
+        free(dis);
       }
     }
 
     static RefCounted* create(size_t* size) {
-      size_t capacityBytes;
-      if (!folly::checked_add(&capacityBytes, *size, size_t(1))) {
-        throw_exception(std::length_error(""));
-      }
-      if (!folly::checked_muladd(
-              &capacityBytes, capacityBytes, sizeof(Char), getDataOffset())) {
-        throw_exception(std::length_error(""));
-      }
-      const size_t allocSize = goodMallocSize(capacityBytes);
+      const size_t allocSize =
+          goodMallocSize(getDataOffset() + (*size + 1) * sizeof(Char));
       auto result = static_cast<RefCounted*>(checkedMalloc(allocSize));
       result->refCount_.store(1, std::memory_order_release);
       *size = (allocSize - getDataOffset()) / sizeof(Char) - 1;
@@ -519,15 +505,8 @@ class fbstring_core {
         const size_t currentCapacity,
         size_t* newCapacity) {
       assert(*newCapacity > 0 && *newCapacity > currentSize);
-      size_t capacityBytes;
-      if (!folly::checked_add(&capacityBytes, *newCapacity, size_t(1))) {
-        throw_exception(std::length_error(""));
-      }
-      if (!folly::checked_muladd(
-              &capacityBytes, capacityBytes, sizeof(Char), getDataOffset())) {
-        throw_exception(std::length_error(""));
-      }
-      const size_t allocNewCapacity = goodMallocSize(capacityBytes);
+      const size_t allocNewCapacity =
+          goodMallocSize(getDataOffset() + (*newCapacity + 1) * sizeof(Char));
       auto const dis = fromData(data);
       assert(dis->refCount_.load(std::memory_order_acquire) == 1);
       auto result = static_cast<RefCounted*>(smartRealloc(
@@ -647,7 +626,8 @@ inline void fbstring_core<Char>::copySmall(const fbstring_core& rhs) {
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::copyMedium(const fbstring_core& rhs) {
+FOLLY_NOINLINE inline void fbstring_core<Char>::copyMedium(
+    const fbstring_core& rhs) {
   // Medium strings are copied eagerly. Don't forget to allocate
   // one extra Char for the null terminator.
   auto const allocSize = goodMallocSize((1 + rhs.ml_.size_) * sizeof(Char));
@@ -661,7 +641,8 @@ FOLLY_NOINLINE void fbstring_core<Char>::copyMedium(const fbstring_core& rhs) {
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::copyLarge(const fbstring_core& rhs) {
+FOLLY_NOINLINE inline void fbstring_core<Char>::copyLarge(
+    const fbstring_core& rhs) {
   // Large strings are just refcounted
   ml_ = rhs.ml_;
   RefCounted::incrementRefs(ml_.data_);
@@ -695,13 +676,13 @@ inline void fbstring_core<Char>::initSmall(
     switch ((byteSize + wordWidth - 1) / wordWidth) { // Number of words.
       case 3:
         ml_.capacity_ = reinterpret_cast<const size_t*>(data)[2];
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
       case 2:
         ml_.size_ = reinterpret_cast<const size_t*>(data)[1];
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
       case 1:
         ml_.data_ = *reinterpret_cast<Char**>(const_cast<Char*>(data));
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
       case 0:
         break;
     }
@@ -716,7 +697,7 @@ inline void fbstring_core<Char>::initSmall(
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::initMedium(
+FOLLY_NOINLINE inline void fbstring_core<Char>::initMedium(
     const Char* const data, const size_t size) {
   // Medium strings are allocated normally. Don't forget to
   // allocate one extra Char for the terminating null.
@@ -731,7 +712,7 @@ FOLLY_NOINLINE void fbstring_core<Char>::initMedium(
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::initLarge(
+FOLLY_NOINLINE inline void fbstring_core<Char>::initLarge(
     const Char* const data, const size_t size) {
   // Large strings are allocated differently
   size_t effectiveCapacity = size;
@@ -743,7 +724,7 @@ FOLLY_NOINLINE void fbstring_core<Char>::initLarge(
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::unshare(size_t minCapacity) {
+FOLLY_NOINLINE inline void fbstring_core<Char>::unshare(size_t minCapacity) {
   assert(category() == Category::isLarge);
   size_t effectiveCapacity = std::max(minCapacity, ml_.capacity());
   auto const newRC = RefCounted::create(&effectiveCapacity);
@@ -768,7 +749,8 @@ inline Char* fbstring_core<Char>::mutableDataLarge() {
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::reserveLarge(size_t minCapacity) {
+FOLLY_NOINLINE inline void fbstring_core<Char>::reserveLarge(
+    size_t minCapacity) {
   assert(category() == Category::isLarge);
   if (RefCounted::refs(ml_.data_) > 1) { // Ensure unique
     // We must make it unique regardless; in-place reallocation is
@@ -791,7 +773,7 @@ FOLLY_NOINLINE void fbstring_core<Char>::reserveLarge(size_t minCapacity) {
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::reserveMedium(
+FOLLY_NOINLINE inline void fbstring_core<Char>::reserveMedium(
     const size_t minCapacity) {
   assert(category() == Category::isMedium);
   // String is not shared
@@ -824,7 +806,7 @@ FOLLY_NOINLINE void fbstring_core<Char>::reserveMedium(
 }
 
 template <class Char>
-FOLLY_NOINLINE void fbstring_core<Char>::reserveSmall(
+FOLLY_NOINLINE inline void fbstring_core<Char>::reserveSmall(
     size_t minCapacity, const bool disableSSO) {
   assert(category() == Category::isSmall);
   if (!disableSSO && minCapacity <= maxSmallSize) {
@@ -1012,17 +994,6 @@ class basic_fbstring {
   typedef std::true_type IsRelocatable;
 
  private:
-  using string_view_type = std::basic_string_view<value_type, traits_type>;
-
-  template <typename StringViewLike>
-  static inline constexpr bool is_string_view_like_v =
-      std::is_convertible_v<StringViewLike const&, string_view_type> &&
-      !std::is_convertible_v<StringViewLike const&, const_pointer>;
-
-  template <typename StringViewLike, typename Dummy>
-  using if_is_string_view_like_t =
-      std::enable_if_t<is_string_view_like_v<StringViewLike>, Dummy>;
-
   static void procrustes(size_type& n, size_type nmax) {
     if (n > nmax) {
       n = nmax;
@@ -1030,11 +1001,6 @@ class basic_fbstring {
   }
 
   static size_type traitsLength(const value_type* s);
-
-  struct string_view_ctor {};
-  FOLLY_NOINLINE basic_fbstring(
-      string_view_type view, const A&, string_view_ctor)
-      : store_(view.data(), view.size()) {}
 
  public:
   // C++11 21.4.2 construct/copy/destroy
@@ -1052,7 +1018,6 @@ class basic_fbstring {
   // these two separate constructors.
 
   basic_fbstring() noexcept : basic_fbstring(A()) {}
-  /* implicit */ basic_fbstring(std::nullptr_t) = delete;
 
   explicit basic_fbstring(const A&) noexcept {}
 
@@ -1116,20 +1081,6 @@ class basic_fbstring {
     assign(il.begin(), il.end());
   }
 
-  template <
-      typename StringViewLike,
-      if_is_string_view_like_t<StringViewLike, int> = 0>
-  explicit basic_fbstring(const StringViewLike& view, const A& a = A())
-      : basic_fbstring(string_view_type(view), a, string_view_ctor{}) {}
-
-  template <
-      typename StringViewLike,
-      if_is_string_view_like_t<StringViewLike, int> = 0>
-  basic_fbstring(
-      const StringViewLike& view, size_type pos, size_type n, const A& a = A())
-      : basic_fbstring(
-            string_view_type(view).substr(pos, n), a, string_view_ctor{}) {}
-
   ~basic_fbstring() noexcept {}
 
   basic_fbstring& operator=(const basic_fbstring& lhs);
@@ -1147,8 +1098,6 @@ class basic_fbstring {
   std::basic_string<E, T, A> toStdString() const {
     return std::basic_string<E, T, A>(data(), size());
   }
-
-  basic_fbstring& operator=(std::nullptr_t) = delete;
 
   basic_fbstring& operator=(const value_type* s) { return assign(s); }
 
@@ -1177,7 +1126,11 @@ class basic_fbstring {
     return assign(il.begin(), il.end());
   }
 
-  operator string_view_type() const noexcept { return {data(), size()}; }
+#if FOLLY_HAS_STRING_VIEW
+  operator std::basic_string_view<value_type, traits_type>() const noexcept {
+    return {data(), size()};
+  }
+#endif
 
   // C++11 21.4.3 iterators:
   iterator begin() { return store_.mutableData(); }
@@ -1285,14 +1238,6 @@ class basic_fbstring {
     return *this;
   }
 
-  template <
-      typename StringViewLike,
-      if_is_string_view_like_t<StringViewLike, int> = 0>
-  basic_fbstring& operator+=(const StringViewLike& like) {
-    append(like);
-    return *this;
-  }
-
   basic_fbstring& append(const basic_fbstring& str);
 
   basic_fbstring& append(
@@ -1314,14 +1259,6 @@ class basic_fbstring {
 
   basic_fbstring& append(std::initializer_list<value_type> il) {
     return append(il.begin(), il.end());
-  }
-
-  template <
-      typename StringViewLike,
-      if_is_string_view_like_t<StringViewLike, int> = 0>
-  basic_fbstring& append(const StringViewLike& like) {
-    string_view_type view = like;
-    return append(view.begin(), view.end());
   }
 
   void push_back(const value_type c) { // primitive
@@ -1429,8 +1366,7 @@ class basic_fbstring {
  public:
   template <class ItOrLength, class ItOrChar>
   iterator insert(const_iterator p, ItOrLength first_or_n, ItOrChar last_or_c) {
-    using Sel =
-        std::bool_constant<std::numeric_limits<ItOrLength>::is_specialized>;
+    using Sel = bool_constant<std::numeric_limits<ItOrLength>::is_specialized>;
     return insertImplDiscr(p, first_or_n, last_or_c, Sel());
   }
 
@@ -1744,41 +1680,13 @@ class basic_fbstring {
     return r != 0 ? r : n1 > n2 ? 1 : n1 < n2 ? -1 : 0;
   }
 
-#if FOLLY_CPLUSPLUS >= 202002L
-  friend auto operator<=>(
-      const basic_fbstring& lhs, const basic_fbstring& rhs) {
-    return lhs.spaceship(rhs.data(), rhs.size());
-  }
-  friend auto operator<=>(const basic_fbstring& lhs, const char* rhs) {
-    return lhs.spaceship(rhs, traitsLength(rhs));
-  }
-  template <typename A2>
-  friend auto operator<=>(
-      const basic_fbstring& lhs, const std::basic_string<E, T, A2>& rhs) {
-    return lhs.spaceship(rhs.data(), rhs.size());
-  }
-#endif // FOLLY_CPLUSPLUS >= 202002L
-
  private:
-#if FOLLY_CPLUSPLUS >= 202002L
-  auto spaceship(const value_type* rhsData, size_type rhsSize) const {
-    auto c = compare(0, size(), rhsData, rhsSize);
-    if (c == 0) {
-      return std::strong_ordering::equal;
-    } else if (c < 0) {
-      return std::strong_ordering::less;
-    } else {
-      return std::strong_ordering::greater;
-    }
-  }
-#endif // FOLLY_CPLUSPLUS >= 202002L
-
   // Data
   Storage store_;
 };
 
 template <typename E, class T, class A, class S>
-FOLLY_NOINLINE typename basic_fbstring<E, T, A, S>::size_type
+FOLLY_NOINLINE inline typename basic_fbstring<E, T, A, S>::size_type
 basic_fbstring<E, T, A, S>::traitsLength(const value_type* s) {
   return s ? traits_type::length(s)
            : (throw_exception<std::logic_error>(
@@ -1868,8 +1776,8 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::append(
 }
 
 template <typename E, class T, class A, class S>
-FOLLY_NOINLINE basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::append(
-    const value_type* s, size_type n) {
+FOLLY_NOINLINE inline basic_fbstring<E, T, A, S>&
+basic_fbstring<E, T, A, S>::append(const value_type* s, size_type n) {
   Invariant checker(*this);
 
   if (FOLLY_UNLIKELY(!n)) {
@@ -1919,8 +1827,8 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::assign(
 }
 
 template <typename E, class T, class A, class S>
-FOLLY_NOINLINE basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::assign(
-    const value_type* s, const size_type n) {
+FOLLY_NOINLINE inline basic_fbstring<E, T, A, S>&
+basic_fbstring<E, T, A, S>::assign(const value_type* s, const size_type n) {
   Invariant checker(*this);
 
   if (n == 0) {
@@ -2182,7 +2090,7 @@ inline void basic_fbstring<E, T, A, S>::replaceImpl(
   Invariant checker(*this);
 
   // Handle aliased replace
-  using Sel = std::bool_constant<
+  using Sel = bool_constant<
       std::is_same<FwdIterator, iterator>::value ||
       std::is_same<FwdIterator, const_iterator>::value>;
   if (replaceAliased(i1, i2, s1, s2, Sel())) {
@@ -2456,19 +2364,11 @@ inline bool operator==(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator==(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator==(
     const typename basic_fbstring<E, T, A, S>::value_type* lhs,
     const basic_fbstring<E, T, A, S>& rhs) {
   return rhs == lhs;
 }
-
-template <typename E, class T, class A, class S>
-inline bool operator==(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
 
 template <typename E, class T, class A, class S>
 inline bool operator==(
@@ -2485,10 +2385,6 @@ inline bool operator!=(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator!=(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator!=(
     const typename basic_fbstring<E, T, A, S>::value_type* lhs,
     const basic_fbstring<E, T, A, S>& rhs) {
@@ -2496,10 +2392,6 @@ inline bool operator!=(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator!=(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator!=(
     const basic_fbstring<E, T, A, S>& lhs,
     const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
@@ -2514,19 +2406,11 @@ inline bool operator<(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator<(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator<(
     const basic_fbstring<E, T, A, S>& lhs,
     const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
   return lhs.compare(rhs) < 0;
 }
-
-template <typename E, class T, class A, class S>
-inline bool operator<(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
 
 template <typename E, class T, class A, class S>
 inline bool operator<(
@@ -2543,19 +2427,11 @@ inline bool operator>(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator>(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator>(
     const basic_fbstring<E, T, A, S>& lhs,
     const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
   return rhs < lhs;
 }
-
-template <typename E, class T, class A, class S>
-inline bool operator>(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
 
 template <typename E, class T, class A, class S>
 inline bool operator>(
@@ -2572,19 +2448,11 @@ inline bool operator<=(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator<=(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator<=(
     const basic_fbstring<E, T, A, S>& lhs,
     const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
   return !(rhs < lhs);
 }
-
-template <typename E, class T, class A, class S>
-inline bool operator<=(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
 
 template <typename E, class T, class A, class S>
 inline bool operator<=(
@@ -2601,10 +2469,6 @@ inline bool operator>=(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator>=(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator>=(
     const basic_fbstring<E, T, A, S>& lhs,
     const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
@@ -2612,25 +2476,11 @@ inline bool operator>=(
 }
 
 template <typename E, class T, class A, class S>
-inline bool operator>=(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
 inline bool operator>=(
     const typename basic_fbstring<E, T, A, S>::value_type* lhs,
     const basic_fbstring<E, T, A, S>& rhs) {
   return !(lhs < rhs);
 }
-
-#if FOLLY_CPLUSPLUS >= 202002
-template <typename E, class T, class A, class S>
-inline bool operator<=>(std::nullptr_t, const basic_fbstring<E, T, A, S>&) =
-    delete;
-
-template <typename E, class T, class A, class S>
-inline bool operator<=>(const basic_fbstring<E, T, A, S>&, std::nullptr_t) =
-    delete;
-#endif
 
 // C++11 21.4.8.8
 template <typename E, class T, class A, class S>
@@ -2692,7 +2542,7 @@ operator<<(
         typename basic_fbstring<E, T, A, S>::value_type,
         typename basic_fbstring<E, T, A, S>::traits_type>& os,
     const basic_fbstring<E, T, A, S>& str) {
-#ifdef _LIBCPP_VERSION
+#if _LIBCPP_VERSION
   typedef std::basic_ostream<
       typename basic_fbstring<E, T, A, S>::value_type,
       typename basic_fbstring<E, T, A, S>::traits_type>
@@ -2726,6 +2576,10 @@ operator<<(
 #endif
   return os;
 }
+
+template <typename E1, class T, class A, class S>
+constexpr typename basic_fbstring<E1, T, A, S>::size_type
+    basic_fbstring<E1, T, A, S>::npos;
 
 // basic_string compatibility routines
 
@@ -2875,14 +2729,3 @@ struct IsSomeString;
 template <>
 struct IsSomeString<fbstring> : std::true_type {};
 } // namespace folly
-
-template <>
-struct fmt::formatter<folly::fbstring> : private formatter<fmt::string_view> {
-  using formatter<fmt::string_view>::parse;
-
-  template <typename Context>
-  typename Context::iterator format(
-      const folly::fbstring& s, Context& ctx) const {
-    return formatter<fmt::string_view>::format({s.data(), s.size()}, ctx);
-  }
-};

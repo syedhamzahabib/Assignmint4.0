@@ -1,5 +1,0 @@
-Test server running on port 3000
-Available routes:
-  GET /health
-  GET /test
-  GET /api/tasks

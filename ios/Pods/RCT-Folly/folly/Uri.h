@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,9 @@
 #include <string>
 #include <vector>
 
-#include <folly/Expected.h>
 #include <folly/String.h>
 
 namespace folly {
-/**
- * Error codes for parsing issues. Used by tryFromString()
- */
-enum class UriFormatError {
-  INVALID_URI,
-  INVALID_URI_AUTHORITY,
-  INVALID_URI_PORT,
-};
 
 /**
  * Class representing a URI.
@@ -52,17 +43,9 @@ enum class UriFormatError {
 class Uri {
  public:
   /**
-   * Parse a Uri from a string.  Same as tryFromString except it throws
-   * a std::invalid_argument if there's an error.
+   * Parse a Uri from a string.  Throws std::invalid_argument on parse error.
    */
   explicit Uri(StringPiece str);
-
-  /**
-   * Parse a Uri from a string.
-   *
-   * On failure, returns UriFormatError.
-   */
-  static Expected<Uri, UriFormatError> tryFromString(StringPiece str) noexcept;
 
   const std::string& scheme() const { return scheme_; }
   const std::string& username() const { return username_; }
@@ -123,8 +106,6 @@ class Uri {
   const std::vector<std::pair<std::string, std::string>>& getQueryParams();
 
  private:
-  explicit Uri();
-
   std::string scheme_;
   std::string username_;
   std::string password_;

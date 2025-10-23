@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,11 @@
  */
 
 #pragma once
+
+/*
+ * @author Keith Adams <kma@fb.com>
+ * @author Jordan DeLong <delong.j@fb.com>
+ */
 
 #include <array>
 #include <atomic>
@@ -68,7 +73,7 @@ struct MicroSpinLock {
   void init() noexcept { payload()->store(FREE); }
 
   bool try_lock() noexcept {
-    bool ret = xchg(LOCKED) == FREE;
+    bool ret = cas(FREE, LOCKED);
     annotate_rwlock_try_acquired(
         this, annotate_rwlock_level::wrlock, ret, __FILE__, __LINE__);
     return ret;
@@ -76,7 +81,7 @@ struct MicroSpinLock {
 
   void lock() noexcept {
     detail::Sleeper sleeper;
-    while (xchg(LOCKED) != FREE) {
+    while (!cas(FREE, LOCKED)) {
       do {
         sleeper.wait();
       } while (payload()->load(std::memory_order_relaxed) == LOCKED);
@@ -98,14 +103,17 @@ struct MicroSpinLock {
     return reinterpret_cast<std::atomic<uint8_t>*>(&this->lock_);
   }
 
-  uint8_t xchg(uint8_t newVal) noexcept {
-    return std::atomic_exchange_explicit(
-        payload(), newVal, std::memory_order_acq_rel);
+  bool cas(uint8_t compare, uint8_t newVal) noexcept {
+    return std::atomic_compare_exchange_strong_explicit(
+        payload(),
+        &compare,
+        newVal,
+        std::memory_order_acquire,
+        std::memory_order_relaxed);
   }
 };
 static_assert(
-    std::is_standard_layout<MicroSpinLock>::value &&
-        std::is_trivial<MicroSpinLock>::value,
+    std::is_pod<MicroSpinLock>::value,
     "MicroSpinLock must be kept a POD type.");
 
 //////////////////////////////////////////////////////////////////////

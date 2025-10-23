@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,11 +38,7 @@ class AtomicLinkedList {
   AtomicLinkedList(const AtomicLinkedList&) = delete;
   AtomicLinkedList& operator=(const AtomicLinkedList&) = delete;
   AtomicLinkedList(AtomicLinkedList&& other) noexcept = default;
-  AtomicLinkedList& operator=(AtomicLinkedList&& other) noexcept {
-    list_.reverseSweepAndAssign(
-        std::move(other.list_), [](Wrapper* node) { delete node; });
-    return *this;
-  }
+  AtomicLinkedList& operator=(AtomicLinkedList&& other) = default;
 
   ~AtomicLinkedList() {
     sweep([](T&&) {});
@@ -71,23 +67,6 @@ class AtomicLinkedList {
     list_.sweep([&](Wrapper* wrapperPtr) mutable {
       std::unique_ptr<Wrapper> wrapper(wrapperPtr);
 
-      func(std::move(wrapper->data));
-    });
-  }
-
-  /**
-   * Sweeps the list a single time, as a single point in time swap with the
-   * current contents of the list.
-   *
-   * Unlike sweep() it does not loop to ensure the list is empty at some point
-   * after the last invocation.
-   *
-   * Returns false if the list is empty.
-   */
-  template <typename F>
-  bool sweepOnce(F&& func) {
-    return list_.sweepOnce([&](Wrapper* wrappedPtr) {
-      std::unique_ptr<Wrapper> wrapper(wrappedPtr);
       func(std::move(wrapper->data));
     });
   }

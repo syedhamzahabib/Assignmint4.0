@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,54 +6,110 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { useStripe } from '@stripe/stripe-react-native';
 import { COLORS } from '../constants';
 import Icon, { Icons } from '../components/common/Icon';
-
-// Mock wallet data
-const mockWalletData = {
-  balance: '$1,250.00',
-  pendingAmount: '$320.00',
-  totalEarnings: '$2,450.00',
-  transactions: [
-    {
-      id: '1',
-      type: 'credit',
-      amount: '$120.00',
-      description: 'Payment for "Business Case Study Analysis"',
-      date: '2025-01-20',
-      status: 'completed',
-    },
-    {
-      id: '2',
-      type: 'credit',
-      amount: '$80.00',
-      description: 'Payment for "Research Paper Writing"',
-      date: '2025-01-18',
-      status: 'completed',
-    },
-    {
-      id: '3',
-      type: 'debit',
-      amount: '-$50.00',
-      description: 'Withdrawal to Bank Account',
-      date: '2025-01-15',
-      status: 'completed',
-    },
-    {
-      id: '4',
-      type: 'credit',
-      amount: '$95.00',
-      description: 'Payment for "Chemistry Lab Report"',
-      date: '2025-01-12',
-      status: 'pending',
-    },
-  ],
-};
+import { useAuth } from '../state/AuthProvider';
+import { stripeService, WalletBalance, Transaction } from '../services/stripeService';
+import { STRIPE_ENABLED } from '../config/environment';
 
 const WalletScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const handleWithdraw = () => {
-    Alert.alert('Withdraw Funds', 'Withdrawal feature coming soon!');
+  const { user } = useAuth();
+  const { presentPaymentSheet, initPaymentSheet } = useStripe();
+  const [walletData, setWalletData] = useState<WalletBalance | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load wallet data from Stripe
+  useEffect(() => {
+    const loadWalletData = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        if (STRIPE_ENABLED) {
+          const balance = await stripeService.getWalletBalance(user.uid);
+          setWalletData(balance);
+          const transactionHistory = await stripeService.getTransactionHistory(user.uid, 50);
+          setTransactions(transactionHistory);
+        } else {
+          // Mock data when Stripe is disabled
+          setWalletData({
+            available: 0,
+            pending: 0,
+            currency: 'usd'
+          });
+          setTransactions([]);
+        }
+
+      } catch (error) {
+        console.error('❌ Error loading wallet data:', error);
+        Alert.alert('Error', 'Failed to load wallet data. Please try again.');
+        // Fallback to mock data on error
+        setWalletData({
+          available: 0,
+          pending: 0,
+          currency: 'usd'
+        });
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadWalletData();
+  }, [user]);
+
+  const handleAddFunds = async () => {
+    try {
+      console.log('💰 Adding funds to wallet...');
+      
+      if (!STRIPE_ENABLED) {
+        Alert.alert('Coming Soon', 'Payment integration is being set up. Please check back later.');
+        return;
+      }
+
+      // TODO: Implement Stripe PaymentSheet for adding funds
+      Alert.alert('Coming Soon', 'Add funds feature will be available soon!');
+
+    } catch (error) {
+      console.error('❌ Error adding funds:', error);
+      Alert.alert('Error', 'Failed to add funds. Please try again.');
+    }
+  };
+  const handleWithdraw = async () => {
+    try {
+      console.log('💰 Withdrawing funds from wallet...');
+      
+      if (!user) {
+        Alert.alert('Error', 'Please log in to withdraw funds.');
+        return;
+      }
+
+      // For now, show coming soon message
+      // In production, this would open Stripe Connect payout flow
+      Alert.alert(
+        'Withdraw Funds', 
+        'Withdrawal feature is being set up. You\'ll be able to withdraw funds to your bank account once Stripe Connect is fully configured.',
+        [
+          { text: 'OK', style: 'default' },
+          { 
+            text: 'Set Up Payouts', 
+            onPress: () => {
+              // This would open Stripe Connect onboarding
+              Alert.alert('Coming Soon', 'Stripe Connect setup will be available soon!');
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error withdrawing funds:', error);
+      Alert.alert('Error', 'Failed to process withdrawal. Please try again.');
+    }
   };
 
   const handleAddPaymentMethod = () => {
@@ -83,27 +139,39 @@ const WalletScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={styles.balanceSection}>
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>Available Balance</Text>
-            <Text style={styles.balanceAmount}>{mockWalletData.balance}</Text>
-            <TouchableOpacity style={styles.withdrawButton} onPress={handleWithdraw}>
-              <Text style={styles.withdrawButtonText}>Withdraw</Text>
+            <Text style={styles.balanceAmount}>
+              ${walletData?.available?.toFixed(2) || '0.00'}
+            </Text>
+            <TouchableOpacity style={styles.addFundsButton} onPress={handleAddFunds}>
+              <Text style={styles.addFundsButtonText}>Add Funds</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>Pending Amount</Text>
-            <Text style={styles.pendingAmount}>{mockWalletData.pendingAmount}</Text>
+            <Text style={styles.pendingAmount}>
+              ${walletData?.pending?.toFixed(2) || '0.00'}
+            </Text>
             <Text style={styles.pendingNote}>Will be available in 3-5 days</Text>
+            <TouchableOpacity style={styles.withdrawButton} onPress={handleWithdraw}>
+              <Text style={styles.withdrawButtonText}>Withdraw</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{mockWalletData.transactions.length}</Text>
+            <Text style={styles.statNumber}>{transactions.length}</Text>
             <Text style={styles.statLabel}>Transactions</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{mockWalletData.totalEarnings}</Text>
+            <Text style={styles.statNumber}>
+              ${transactions
+                .filter(t => t.type === 'credit' && t.status === 'completed')
+                .reduce((sum, t) => sum + t.amount, 0)
+                .toFixed(0)}
+            </Text>
             <Text style={styles.statLabel}>Total Earnings</Text>
           </View>
           <View style={styles.statCard}>
@@ -137,38 +205,51 @@ const WalletScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
 
-          {mockWalletData.transactions.map((transaction) => (
-            <TouchableOpacity
-              key={transaction.id}
-              style={styles.transactionCard}
-              onPress={() => handleViewTransaction(transaction)}
-            >
-              <View style={styles.transactionInfo}>
-                <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                <Text style={styles.transactionDate}>{transaction.date}</Text>
-              </View>
-
-              <View style={styles.transactionAmount}>
-                <Text style={[
-                  styles.transactionAmountText,
-                  { color: transaction.type === 'credit' ? COLORS.success : COLORS.error },
-                ]}>
-                  {transaction.amount}
-                </Text>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: transaction.status === 'completed' ? COLORS.success + '20' : COLORS.warning + '20' },
-                ]}>
-                  <Text style={[
-                    styles.statusText,
-                    { color: transaction.status === 'completed' ? COLORS.success : COLORS.warning },
-                  ]}>
-                    {transaction.status}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Loading transactions...</Text>
+            </View>
+          ) : transactions.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No transactions yet</Text>
+            </View>
+          ) : (
+            transactions.map((transaction) => (
+              <TouchableOpacity
+                key={transaction.id}
+                style={styles.transactionCard}
+                onPress={() => handleViewTransaction(transaction)}
+              >
+                <View style={styles.transactionInfo}>
+                  <Text style={styles.transactionDescription}>{transaction.description}</Text>
+                  <Text style={styles.transactionDate}>
+                    {new Date(transaction.date).toLocaleDateString()}
                   </Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+
+                <View style={styles.transactionAmount}>
+                  <Text style={[
+                    styles.transactionAmountText,
+                    { color: transaction.type === 'credit' ? COLORS.success : COLORS.error },
+                  ]}>
+                    {transaction.type === 'credit' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                  </Text>
+                  <View style={[
+                    styles.statusBadge,
+                    { backgroundColor: transaction.status === 'completed' ? COLORS.success + '20' : COLORS.warning + '20' },
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      { color: transaction.status === 'completed' ? COLORS.success : COLORS.warning },
+                    ]}>
+                      {transaction.status}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Quick Actions */}
@@ -268,17 +349,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
   },
+  addFundsButton: {
+    backgroundColor: COLORS.success,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  addFundsButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   withdrawButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 8,
   },
   withdrawButtonText: {
     color: COLORS.white,
     fontSize: 14,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
   statsContainer: {
     flexDirection: 'row',

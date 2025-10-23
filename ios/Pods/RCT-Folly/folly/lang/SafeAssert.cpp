@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -516,15 +516,13 @@ void flushStderr() {
   fileutil_detail::wrapNoInt(fsync, stderr_fileno);
 }
 
-[[noreturn, FOLLY_ATTR_GNU_COLD]] void safe_assert_terminate_v(
+[[noreturn]] FOLLY_COLD void safe_assert_terminate_v(
     safe_assert_arg const* arg_, int const error, va_list msg) noexcept {
   auto const& arg = *arg_;
   char buf[to_ascii_size_max_decimal<uint64_t>];
 
-  if (arg.expr) {
-    writeStderr("\n\nAssertion failure: ");
-    writeStderr(arg.expr);
-  }
+  writeStderr("\n\nAssertion failure: ");
+  writeStderr(arg.expr + 1, strlen(arg.expr) - 2);
   if (*arg.msg_types != safe_assert_msg_type::term) {
     writeStderr("\nMessage: ");
     auto msg_types = arg.msg_types;

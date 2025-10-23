@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,6 +94,7 @@ class not_null_base : protected guaranteed_not_null_provider {
   /* implicit */ not_null_base(std::nullptr_t) = delete;
 
   not_null_base(const not_null_base& nn) = default;
+  not_null_base(not_null_base& nn) = default;
   not_null_base(not_null_base&& nn) = default;
 
   template <
@@ -431,9 +432,6 @@ not_null_shared_ptr<T> reinterpret_pointer_cast(
     const not_null_shared_ptr<U>& r);
 template <typename T, typename U>
 not_null_shared_ptr<T> reinterpret_pointer_cast(not_null_shared_ptr<U>&& r);
-
-template <typename PtrT>
-not_null(PtrT&&) -> not_null<std::remove_cv_t<std::remove_reference_t<PtrT>>>;
 
 } // namespace folly
 

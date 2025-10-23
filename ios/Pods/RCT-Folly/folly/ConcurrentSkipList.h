@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// @author: Xin Liu <xliux@fb.com>
+//
 // A concurrent skip list (CSL) implementation.
 // Ref: http://www.cs.tau.ac.il/~shanir/nir-pubs-web/Papers/OPODIS2006-BA.pdf
 
@@ -142,7 +144,7 @@ template <
     int MAX_HEIGHT = 24>
 class ConcurrentSkipList {
   // MAX_HEIGHT needs to be at least 2 to suppress compiler
-  // warnings/errors (Werror=uninitialized triggered due to preds_[1]
+  // warnings/errors (Werror=uninitialized tiggered due to preds_[1]
   // being treated as a scalar in the compiler).
   static_assert(
       MAX_HEIGHT >= 2 && MAX_HEIGHT < 64,
@@ -266,7 +268,7 @@ class ConcurrentSkipList {
   }
 
   // lock all the necessary nodes for changing (adding or removing) the list.
-  // returns true if all the lock acquired successfully and the related nodes
+  // returns true if all the lock acquried successfully and the related nodes
   // are all validate (not in certain pending states), false otherwise.
   bool lockNodesForChange(
       int nodeHeight,
@@ -301,7 +303,7 @@ class ConcurrentSkipList {
   //     It could be either the newly added data, or the existed data in the
   //     list with the same key.
   //   pair.second stores whether the data is added successfully:
-  //     0 means not added, otherwise returns the new size.
+  //     0 means not added, otherwise reutrns the new size.
   template <typename U>
   std::pair<NodeType*, size_t> addOrGetData(U&& data) {
     NodeType *preds[MAX_HEIGHT], *succs[MAX_HEIGHT];
@@ -318,7 +320,7 @@ class ConcurrentSkipList {
           continue; // if it's getting deleted retry finding node.
         }
         // wait until fully linked.
-        while (FOLLY_UNLIKELY(!nodeFound->fullyLinked())) {
+        while (UNLIKELY(!nodeFound->fullyLinked())) {
         }
         return std::make_pair(nodeFound, 0);
       }
@@ -446,7 +448,7 @@ class ConcurrentSkipList {
 
   // Find node by first stepping down then stepping right. Based on benchmark
   // results, this is slightly faster than findNodeRightDown for better
-  // locality on the skipping pointers.
+  // localality on the skipping pointers.
   std::pair<NodeType*, int> findNodeDownRight(const value_type& data) const {
     NodeType* pred = head_.load(std::memory_order_acquire);
     int ht = pred->height();
@@ -559,7 +561,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   }
 
   // Unsafe initializer: the caller assumes the responsibility to keep
-  // skip_list valid during the whole life cycle of the Accessor.
+  // skip_list valid during the whole life cycle of the Acessor.
   explicit Accessor(ConcurrentSkipList* skip_list) : sl_(skip_list) {
     DCHECK(sl_ != nullptr);
     sl_->recycler_.addRef();
@@ -681,7 +683,7 @@ class detail::csl_iterator : public detail::IteratorFacade<
   csl_iterator(
       const csl_iterator<OtherVal, OtherNode>& other,
       typename std::enable_if<
-          std::is_convertible<OtherVal*, ValT*>::value>::type* = nullptr)
+          std::is_convertible<OtherVal, ValT>::value>::type* = nullptr)
       : node_(other.node_) {}
 
   size_t nodeSize() const {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,51 +16,12 @@
 
 #pragma once
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
 #include <folly/Portability.h>
-#include <folly/Traits.h>
 
 namespace folly {
-
-//  register_pass_max_size
-//
-//  The platform-specific maximum size of a value which may be passed by-value
-//  in registers.
-//
-//  According to each platform ABI, trivially-copyable types up to this maximum
-//  size may, if the stars align, be passed by-value in registers rather than
-//  implicitly by-reference to stack copies.
-//
-//  Approximate. Accuracy is not promised.
-constexpr std::size_t register_pass_max_size =
-    (kMscVer ? 1u : 2u) * sizeof(void*);
-
-//  is_register_pass_v
-//
-//  Whether a value may be passed in a register.
-//
-//  Trivially-copyable values up to register_pass_max_size in width may be
-//  passed by-value in registers rather than implicitly by-reference to stack
-//  copies.
-//
-//  Approximate. Accuracy is not promised.
-template <typename T>
-constexpr bool is_register_pass_v =
-    (sizeof(T) <= register_pass_max_size) && std::is_trivially_copyable_v<T>;
-template <typename T>
-constexpr bool is_register_pass_v<T&> = true;
-template <typename T>
-constexpr bool is_register_pass_v<T&&> = true;
-
-/// register_pass_t
-///
-/// Chooses an optimal argument type for passing values of type T based on
-/// whehter such values may be passed in registers.
-template <typename T>
-using register_pass_t = conditional_t<is_register_pass_v<T>, T const, T const&>;
 
 //  has_extended_alignment
 //
@@ -179,62 +140,5 @@ constexpr std::size_t cacheline_align_v = has_extended_alignment
     ? hardware_constructive_interference_size
     : max_align_v;
 struct alignas(cacheline_align_v) cacheline_align_t {};
-
-/// valid_align_value
-///
-/// Returns whether an alignment value is valid. Valid alignment values are
-/// powers of two representable as std::uintptr_t, with possibly additional
-/// context-specific restrictions that are not checked here.
-struct valid_align_value_fn {
-  static_assert(sizeof(std::size_t) <= sizeof(std::uintptr_t));
-  constexpr bool operator()(std::size_t align) const noexcept {
-    return align && !(align & (align - 1));
-  }
-  constexpr bool operator()(std::align_val_t align) const noexcept {
-    return operator()(static_cast<std::size_t>(align));
-  }
-};
-inline constexpr valid_align_value_fn valid_align_value;
-
-/// align_floor
-/// align_floor_fn
-///
-/// Returns pointer rounded down to the given alignment.
-struct align_floor_fn {
-  constexpr std::uintptr_t operator()(
-      std::uintptr_t x, std::size_t alignment) const {
-    assert(valid_align_value(alignment));
-    return x & ~(alignment - 1);
-  }
-
-  template <typename T>
-  T* operator()(T* x, std::size_t alignment) const {
-    auto asUint = reinterpret_cast<std::uintptr_t>(x);
-    asUint = (*this)(asUint, alignment);
-    return reinterpret_cast<T*>(asUint);
-  }
-};
-inline constexpr align_floor_fn align_floor;
-
-/// align_ceil
-/// align_ceil_fn
-///
-/// Returns pointer rounded up to the given alignment.
-struct align_ceil_fn {
-  constexpr std::uintptr_t operator()(
-      std::uintptr_t x, std::size_t alignment) const {
-    assert(valid_align_value(alignment));
-    auto alignmentAsInt = static_cast<std::intptr_t>(alignment);
-    return (x + alignmentAsInt - 1) & (-alignmentAsInt);
-  }
-
-  template <typename T>
-  T* operator()(T* x, std::size_t alignment) const {
-    auto asUint = reinterpret_cast<std::uintptr_t>(x);
-    asUint = (*this)(asUint, alignment);
-    return reinterpret_cast<T*>(asUint);
-  }
-};
-inline constexpr align_ceil_fn align_ceil;
 
 } // namespace folly

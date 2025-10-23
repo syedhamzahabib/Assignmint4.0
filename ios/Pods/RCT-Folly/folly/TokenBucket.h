@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ class TokenBucketStorage {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 buckets are "empty" after construction.
+   *                 buckets are "full" after construction.
    */
   explicit TokenBucketStorage(double zeroTime = 0) noexcept
       : zeroTime_(zeroTime) {}
@@ -101,21 +101,24 @@ class TokenBucketStorage {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 bucket is reset to "empty".
+   *                 bucket is reset to "full".
    */
   void reset(double zeroTime = 0) noexcept {
     zeroTime_.store(zeroTime, std::memory_order_relaxed);
   }
 
   /**
-   * Returns the token balance at specified time (negative if bucket in debt).
+   * Returns the number of tokens currently available.  This could be negative
+   * (if in debt); will be a most burstSize.
    *
-   * Thread-safe (but returned value may immediately be outdated).
+   *
+   * Thread-safe (but returned values may immediately be outdated).
    */
-  double balance(
+  double available(
       double rate, double burstSize, double nowInSeconds) const noexcept {
     assert(rate > 0);
     assert(burstSize > 0);
+
     double zt = this->zeroTime_.load(std::memory_order_relaxed);
     return std::min((nowInSeconds - zt) * rate, burstSize);
   }
@@ -152,7 +155,7 @@ class TokenBucketStorage {
       }
 
       zeroTimeNew = nowInSeconds - tokensNew / rate;
-    } while (FOLLY_UNLIKELY(
+    } while (UNLIKELY(
         !compare_exchange_weak_relaxed(zeroTime_, zeroTimeOld, zeroTimeNew)));
 
     return consumed;
@@ -199,7 +202,7 @@ class TokenBucketStorage {
     do {
       zeroTimeNew = zeroTimeOld - tokenCount / rate;
 
-    } while (FOLLY_UNLIKELY(
+    } while (UNLIKELY(
         !compare_exchange_weak_relaxed(zeroTime_, zeroTimeOld, zeroTimeNew)));
     return zeroTimeNew;
   }
@@ -266,21 +269,19 @@ class BasicDynamicTokenBucket {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 buckets are "empty" after construction.
+   *                 buckets are "full" after construction.
    */
   explicit BasicDynamicTokenBucket(double zeroTime = 0) noexcept
       : bucket_(zeroTime) {}
 
   /**
-   * Copy constructor and copy assignment operator.
+   * Copy constructor.
    *
    * Thread-safe. (Copy constructors of derived classes may not be thread-safe
    * however.)
    */
-  BasicDynamicTokenBucket(const BasicDynamicTokenBucket& other) noexcept =
-      default;
-  BasicDynamicTokenBucket& operator=(
-      const BasicDynamicTokenBucket& other) noexcept = default;
+  BasicDynamicTokenBucket(const BasicDynamicTokenBucket& other) noexcept
+      : bucket_(other.bucket_) {}
 
   /**
    * Re-initialize token bucket.
@@ -289,7 +290,7 @@ class BasicDynamicTokenBucket {
    *
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 bucket is reset to "empty".
+   *                 bucket is reset to "full".
    */
   void reset(double zeroTime = 0) noexcept { bucket_.reset(zeroTime); }
 
@@ -325,7 +326,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    if (bucket_.balance(rate, burstSize, nowInSeconds) < 0.0) {
+    if (bucket_.available(rate, burstSize, nowInSeconds) < 0.0) {
       return 0;
     }
 
@@ -361,7 +362,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    if (bucket_.balance(rate, burstSize, nowInSeconds) <= 0.0) {
+    if (bucket_.available(rate, burstSize, nowInSeconds) <= 0.0) {
       return 0;
     }
 
@@ -450,9 +451,7 @@ class BasicDynamicTokenBucket {
   }
 
   /**
-   * Returns the tokens available at specified time (zero if in debt).
-   *
-   * Use balance() to get the balance of tokens.
+   * Returns the number of tokens currently available.
    *
    * Thread-safe (but returned value may immediately be outdated).
    */
@@ -460,19 +459,9 @@ class BasicDynamicTokenBucket {
       double rate,
       double burstSize,
       double nowInSeconds = defaultClockNow()) const noexcept {
-    return std::max(0.0, balance(rate, burstSize, nowInSeconds));
-  }
-
-  /**
-   * Returns the token balance at specified time (negative if bucket in debt).
-   *
-   * Thread-safe (but returned value may immediately be outdated).
-   */
-  double balance(
-      double rate,
-      double burstSize,
-      double nowInSeconds = defaultClockNow()) const noexcept {
-    return bucket_.balance(rate, burstSize, nowInSeconds);
+    assert(rate > 0);
+    assert(burstSize > 0);
+    return std::max(0.0, bucket_.available(rate, burstSize, nowInSeconds));
   }
 
  private:
@@ -496,7 +485,7 @@ class BasicTokenBucket {
    * @param burstSize Maximum burst size. Must be greater than 0.
    * @param zeroTime Initial time at which to consider the token bucket
    *                 starting to fill. Defaults to 0, so by default token
-   *                 bucket is "empty" after construction.
+   *                 bucket is "full" after construction.
    */
   BasicTokenBucket(
       double genRate, double burstSize, double zeroTime = 0) noexcept
@@ -601,8 +590,7 @@ class BasicTokenBucket {
   }
 
   /**
-   * Returns extra token back to the bucket.  Cannot be negative.
-   * For negative tokens, setCapacity() can be used
+   * Returns extra token back to the bucket.  Could be negative--it's all good.
    */
   void returnTokens(double tokensToReturn) {
     return tokenBucket_.returnTokens(tokensToReturn, rate_);
@@ -628,23 +616,12 @@ class BasicTokenBucket {
   }
 
   /**
-   * Returns the tokens available at specified time (zero if in debt).
-   *
-   * Use balance() to get the balance of tokens.
+   * Returns the number of tokens currently available.
    *
    * Thread-safe (but returned value may immediately be outdated).
    */
-  double available(double nowInSeconds = defaultClockNow()) const noexcept {
-    return std::max(0.0, balance(nowInSeconds));
-  }
-
-  /**
-   * Returns the token balance at specified time (negative if bucket in debt).
-   *
-   * Thread-safe (but returned value may immediately be outdated).
-   */
-  double balance(double nowInSeconds = defaultClockNow()) const noexcept {
-    return tokenBucket_.balance(rate_, burstSize_, nowInSeconds);
+  double available(double nowInSeconds = defaultClockNow()) const {
+    return tokenBucket_.available(rate_, burstSize_, nowInSeconds);
   }
 
   /**

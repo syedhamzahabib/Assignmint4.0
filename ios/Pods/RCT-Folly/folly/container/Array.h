@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,12 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-/**
- * Helper functions to create std::arrays.
- *
- * @file container/Array.h
- * @refcode folly/docs/examples/folly/container/Array.cpp
  */
 
 #pragma once
@@ -34,7 +28,7 @@ namespace folly {
 
 namespace array_detail {
 template <class T>
-using is_ref_wrapper = is_instantiation_of<std::reference_wrapper, T>;
+using is_ref_wrapper = detail::is_instantiation_of<std::reference_wrapper, T>;
 
 template <typename T>
 using not_ref_wrapper =
@@ -57,9 +51,6 @@ using return_type = std::
     array<typename return_type_helper<D, TList...>::type, sizeof...(TList)>;
 } // namespace array_detail
 
-/// Constructs a std::array with the given argument list.
-///
-/// @param t  The values to be put in the array.
 template <typename D = void, typename... TList>
 constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
   using value_type =
@@ -75,10 +66,9 @@ FOLLY_ERASE constexpr auto make_array_with_(
 }
 } // namespace array_detail
 
-/// Generates a std::array<..., Size> with elements m(i) for i in [0, Size).
-///
-/// @tparam Size  The size of the array
-/// @param make  The generator that makes the array elements. ret[i] = make(i)
+//  make_array_with
+//
+//  Constructs a std::array<..., Size> with elements m(i) for i in [0, Size).
 template <std::size_t Size, typename MakeItem>
 constexpr auto make_array_with(MakeItem const& make) {
   return array_detail::make_array_with_(make, std::make_index_sequence<Size>{});

@@ -15,11 +15,9 @@ import { COLORS } from '../constants';
 import Icon, { Icons } from '../components/common/Icon';
 import { useAuth } from '../state/AuthProvider';
 import { GuestModeBanner } from '../components/common/GuestModeBanner';
-import { taskService } from '../services/taskService';
-import { Task } from '../types';
-import API from '../lib/api';
-import Config from 'react-native-config';
-import session from '../lib/session';
+import { firestoreService } from '../services/firestoreService';
+import { Task } from '../types/firestore';
+import { fcmService } from '../services/fcmService';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,26 +26,84 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const { user, logout, mode, isGuestMode } = useAuth();
 
-  const handleAccept = () => {
-    Alert.alert('Accept', 'Task accepted!');
+  const handleAccept = async (task: Task) => {
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please sign in to accept tasks.');
+      return;
+    }
+    
+    try {
+      // Update task with accepted user
+      await firestoreService.updateTask(task.id, {
+        status: 'in_progress',
+        completedBy: user.uid,
+        completedByName: user.displayName || user.email || 'Unknown User',
+        acceptedAt: new Date(),
+      });
+      
+      // Send notification to task creator
+      await fcmService.sendTaskNotification(
+        task.createdBy,
+        task.id,
+        'taskAccepted',
+        'Task Accepted!',
+        `${user.displayName || user.email} has accepted your task: ${task.title}`
+      );
+      
+      Alert.alert('Success', 'Task accepted successfully!');
+    } catch (error) {
+      console.error('❌ Error accepting task:', error);
+      Alert.alert('Error', 'Failed to accept task. Please try again.');
+    }
   };
 
-  const handleNegotiate = () => {
-    navigation.navigate('ChatThread', {
-      chat: {
-        id: '1',
-        name: 'John Smith',
-        taskTitle: 'Graphic Design Task',
-      },
-    });
+  const handleNegotiate = async (task: Task) => {
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please sign in to start a conversation.');
+      return;
+    }
+    
+    try {
+      // Check if chat already exists for this task
+      const existingChats = await firestoreService.getChats({
+        taskId: task.id,
+        participants: [user.uid, task.createdBy],
+        isActive: true,
+      });
+      
+      let chatId: string;
+      
+      if (existingChats.length > 0) {
+        chatId = existingChats[0].id;
+      } else {
+        // Create new chat
+        chatId = await firestoreService.createChat({
+          taskId: task.id,
+          taskTitle: task.title,
+          participants: [user.uid, task.createdBy],
+          participantNames: {
+            [user.uid]: user.displayName || user.email || 'Unknown User',
+            [task.createdBy]: task.createdByName,
+          },
+          isActive: true,
+        });
+      }
+      
+      navigation.navigate('ChatThread', {
+        chat: {
+          id: chatId,
+          name: task.createdByName,
+          taskTitle: task.title,
+        },
+      });
+    } catch (error) {
+      console.error('❌ Error creating chat:', error);
+      Alert.alert('Error', 'Failed to start conversation. Please try again.');
+    }
   };
 
-  const handleBestDeal = () => {
-    navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: '1' } });
-  };
-
-  const handleViewTask = () => {
-    navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: '1' } });
+  const handleViewTask = (task: Task) => {
+    navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: task.id } });
   };
 
   const handleLogout = async () => {
@@ -59,41 +115,52 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
-  // Dev sign-in and load tasks
+  // Initialize FCM and load tasks with real-time updates
   useEffect(() => {
-    console.log('📡 Loading tasks from API');
-    console.log('🔧 API_BASE_URL:', Config.API_BASE_URL);
-    
+    let unsubscribe: (() => void) | null = null;
+
     const initializeApp = async () => {
       try {
-        // Dev sign-in (replace with real auth flow later)
-        const currentUser = session.getCurrentUser();
-        if (!currentUser) {
-          console.log('🔐 Attempting dev sign-in...');
-          await session.signIn('dev@assignmint.com', 'devpassword123');
+        // Initialize FCM for notifications (with fallback)
+        try {
+          await fcmService.initialize();
+        } catch (error) {
+          console.warn('⚠️ FCM initialization failed, continuing without notifications:', error);
         }
         
-        // Load tasks
-        const response = await API.getTasks();
-        console.log('📡 API response:', response);
-        setTasks(response.tasks || []);
-        setLoading(false);
-        setRefreshing(false);
+        // Set up real-time task updates
+        unsubscribe = firestoreService.subscribeToTasks(
+          { status: 'open', limit: 50 },
+          (realTimeTasks) => {
+            console.log('📡 Real-time tasks update:', realTimeTasks.length);
+            setTasks(realTimeTasks || []);
+            setLoading(false);
+            setRefreshing(false);
+          }
+        );
       } catch (error) {
         console.error('❌ Error initializing app:', error);
+        setTasks([]);
         setLoading(false);
         setRefreshing(false);
       }
     };
 
     initializeApp();
+
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const response = await API.getTasks();
-      setTasks(response.tasks || []);
+      // Real-time updates will automatically refresh the data
+      // No need to manually fetch since we have onSnapshot
+      console.log('🔄 Refreshing tasks...');
     } catch (error) {
       console.error('❌ Error refreshing tasks:', error);
     } finally {
@@ -250,31 +317,31 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.acceptButton]}
-                                            onPress={(e) => {
-                            e.stopPropagation();
-                            handleAccept();
-                          }}
-                        >
-                          <Text style={styles.acceptButtonText}>Accept</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.negotiateButton]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleNegotiate();
-                          }}
-                        >
-                          <Text style={styles.negotiateButtonText}>Negotiate</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.bestDealButton]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            navigation.navigate('HomeStack', { screen: 'TaskDetails', params: { taskId: task.taskId } });
-                          }}
-                        >
-                          <Text style={styles.bestDealButtonText}>View Details</Text>
-                        </TouchableOpacity>
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleAccept(task);
+                  }}
+                >
+                  <Text style={styles.acceptButtonText}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.negotiateButton]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleNegotiate(task);
+                  }}
+                >
+                  <Text style={styles.negotiateButtonText}>Negotiate</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.bestDealButton]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleViewTask(task);
+                  }}
+                >
+                  <Text style={styles.bestDealButtonText}>View Details</Text>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.socialButtons}>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
  * findFirstSet(BitIterator begin, BitIterator end)
  *    return a BitIterator pointing to the first 1 bit in [begin, end), or
  *    end if all bits in [begin, end) are 0
+ *
+ * @author Tudor Bosman (tudorb@fb.com)
  */
 
 #pragma once

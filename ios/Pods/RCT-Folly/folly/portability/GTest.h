@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,5 @@
 FOLLY_PUSH_WARNING
 FOLLY_MSVC_DISABLE_WARNING(4251)
 FOLLY_MSVC_DISABLE_WARNING(4275)
-// IWYU pragma: begin_exports
 #include <gtest/gtest.h>
-// IWYU pragma: end_exports
 FOLLY_POP_WARNING

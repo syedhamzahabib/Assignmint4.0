@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -164,8 +164,7 @@ beginInsertInternal:
     // Alloc a new map and shove it in.  We can change whatever
     // we want because other threads are waiting on us...
     size_t numCellsAllocated =
-        (size_t)(primarySubMap->capacity_ *
-                 std::pow(1.0 + kGrowthFrac_, nextMapIdx - 1));
+        (size_t)(primarySubMap->capacity_ * std::pow(1.0 + kGrowthFrac_, nextMapIdx - 1));
     size_t newSize = size_t(numCellsAllocated * kGrowthFrac_);
     DCHECK(
         subMaps_[nextMapIdx].load(std::memory_order_relaxed) ==
@@ -300,7 +299,7 @@ AtomicHashMap<
   typename SubMap::SimpleRetT ret =
       primaryMap
           ->template findInternal<LookupKeyT, LookupHashFcn, LookupEqualFcn>(k);
-  if (FOLLY_LIKELY(ret.idx != primaryMap->capacity_)) {
+  if (LIKELY(ret.idx != primaryMap->capacity_)) {
     return SimpleRetT(0, ret.idx, ret.success);
   }
   const unsigned int numMaps =
@@ -312,7 +311,7 @@ AtomicHashMap<
         thisMap
             ->template findInternal<LookupKeyT, LookupHashFcn, LookupEqualFcn>(
                 k);
-    if (FOLLY_LIKELY(ret.idx != thisMap->capacity_)) {
+    if (LIKELY(ret.idx != thisMap->capacity_)) {
       return SimpleRetT(i, ret.idx, ret.success);
     }
   }

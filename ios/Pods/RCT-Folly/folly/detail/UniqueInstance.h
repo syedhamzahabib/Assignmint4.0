@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,18 +27,20 @@ namespace detail {
 
 class UniqueInstance {
  public:
+#if __GNUC__ && __GNUC__ < 7 && !__clang__
+  explicit UniqueInstance(...) noexcept {}
+#else
   template <template <typename...> class Z, typename... Key, typename... Mapped>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE explicit UniqueInstance(
       tag_t<Z<Key..., Mapped...>>, tag_t<Key...>, tag_t<Mapped...>) noexcept {
-    static constexpr Ptr const tmpl = FOLLY_TYPE_INFO_OF(key_t<Z>);
-    static constexpr Ptr const ptrs[] = {
-        FOLLY_TYPE_INFO_OF(tag_t<Key>)...,
-        FOLLY_TYPE_INFO_OF(tag_t<Mapped>)...};
-    static FOLLY_CONSTINIT Arg arg{
+    static Ptr const tmpl = &typeid(key_t<Z>);
+    static Ptr const ptrs[] = {&typeid(Key)..., &typeid(Mapped)...};
+    static Arg arg{
         {tmpl, ptrs, sizeof...(Key), sizeof...(Mapped)},
         {tag<Value, key_t<Z, Key...>>}};
     enforce(arg);
   }
+#endif
 
   UniqueInstance(UniqueInstance const&) = delete;
   UniqueInstance(UniqueInstance&&) = delete;

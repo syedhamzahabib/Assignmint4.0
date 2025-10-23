@@ -23,6 +23,7 @@ const RootNavigator = () => {
 
   // Debug logging
   console.log('🔍 RootNavigator - Auth State:', { user: !!user, loading, mode });
+  console.log('🚀 AssignMint App is starting up...');
 
   // Show loading screen while checking auth state
   if (loading) {

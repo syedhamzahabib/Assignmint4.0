@@ -1,20 +1,19 @@
 // FirestoreDataSource.ts - Real Firestore implementation for production
 import { DataSource, Task, UserProfile, Notification, Message } from './DataSource';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import { auth, db } from '../lib/firebase';
 
 export class FirestoreDataSource implements DataSource {
-  private db = firestore();
-
   // Task operations
   async getTasks(): Promise<Task[]> {
     try {
-      const snapshot = await this.db
-        .collection('tasks')
-        .where('isActive', '==', true)
-        .where('isPublic', '==', true)
-        .orderBy('createdAt', 'desc')
-        .get();
+      const tasksRef = collection(db, 'tasks');
+      const q = query(
+        tasksRef,
+        where('isActive', '==', true),
+        where('isPublic', '==', true),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
 
       return snapshot.docs.map(doc => ({
         id: doc.id,

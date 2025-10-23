@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 #include <utility>
 
 #include <folly/Traits.h>
-#include <folly/container/Iterator.h>
 #include <folly/functional/ApplyTuple.h>
 
 // Utility functions for container implementors
@@ -284,20 +283,6 @@ auto callWithConstructedKey(Alloc& a, Func&& f, Args&&... args) {
       a, std::forward_as_tuple(std::forward<Args>(args)...));
   return f(const_cast<KeyType const&>(key.value()), std::move(key.value()));
 }
-
-// Traits to simplify deduction guides implementation for containers.
-
-// SFINAE constraint to test whether a type is an allocator according to
-// is_allocator trait.
-template <typename T>
-using RequireAllocator = std::enable_if_t<is_allocator_v<T>, T>;
-
-template <typename T>
-using RequireNotAllocator = std::enable_if_t<!is_allocator_v<T>, T>;
-
-template <typename T>
-using RequireInputIterator =
-    std::enable_if_t<iterator_category_matches_v<T, std::input_iterator_tag>>;
 
 } // namespace detail
 } // namespace folly

@@ -1,4 +1,4 @@
-/* Copyright 2003-2023 Joaquin M Lopez Munoz.
+/* Copyright 2003-2020 Joaquin M Lopez Munoz.
  * Distributed under the Boost Software License, Version 1.0.
  * (See accompanying file LICENSE_1_0.txt or copy at
  * http://www.boost.org/LICENSE_1_0.txt)
@@ -45,8 +45,8 @@
 #include <boost/call_traits.hpp>
 #include <boost/core/addressof.hpp>
 #include <boost/core/no_exceptions_support.hpp>
-#include <boost/core/ref.hpp>
 #include <boost/detail/workaround.hpp>
+#include <boost/foreach_fwd.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
 #include <boost/move/core.hpp>
 #include <boost/move/utility_core.hpp>
@@ -59,7 +59,6 @@
 #include <boost/multi_index/detail/bidir_node_iterator.hpp>
 #include <boost/multi_index/detail/do_not_copy_elements_tag.hpp>
 #include <boost/multi_index/detail/index_node_base.hpp>
-#include <boost/multi_index/detail/invalidate_iterators.hpp>
 #include <boost/multi_index/detail/modify_key_adaptor.hpp>
 #include <boost/multi_index/detail/node_handle.hpp>
 #include <boost/multi_index/detail/ord_index_node.hpp>
@@ -70,6 +69,7 @@
 #include <boost/multi_index/detail/value_compare.hpp>
 #include <boost/multi_index/detail/vartempl_support.hpp>
 #include <boost/multi_index/detail/ord_index_impl_fwd.hpp>
+#include <boost/ref.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <utility>
@@ -79,8 +79,8 @@
 #endif
 
 #if !defined(BOOST_MULTI_INDEX_DISABLE_SERIALIZATION)
+#include <boost/archive/archive_exception.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/multi_index/detail/bad_archive_exception.hpp>
 #include <boost/multi_index/detail/duplicates_iterator.hpp>
 #include <boost/throw_exception.hpp> 
 #endif
@@ -115,11 +115,6 @@ namespace detail{
 struct ordered_unique_tag{};
 struct ordered_non_unique_tag{};
 
-#if defined(BOOST_MSVC)
-#pragma warning(push)
-#pragma warning(disable:4355) /* this used in base member initializer list */
-#endif
-
 template<
   typename KeyFromValue,typename Compare,
   typename SuperMeta,typename TagList,typename Category,typename AugmentPolicy
@@ -132,6 +127,13 @@ template<
 >
 class ordered_index_impl:
   BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS SuperMeta::type
+
+#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
+  ,public safe_mode::safe_container<
+    ordered_index_impl<
+      KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy> >
+#endif
+
 { 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
     BOOST_WORKAROUND(__MWERKS__,<=0x3003)
@@ -141,12 +143,6 @@ class ordered_index_impl:
  */
 
 #pragma parse_mfunc_templ off
-#endif
-
-#if !defined(BOOST_NO_MEMBER_TEMPLATE_FRIENDS)
-  /* cross-index access */
-
-  template <typename,typename,typename> friend class index_base;
 #endif
 
   typedef typename SuperMeta::type                   super;
@@ -175,7 +171,8 @@ public:
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
   typedef safe_mode::safe_iterator<
-    bidir_node_iterator<index_node_type> >           iterator;
+    bidir_node_iterator<index_node_type>,
+    ordered_index_impl>                              iterator;
 #else
   typedef bidir_node_iterator<index_node_type>       iterator;
 #endif
@@ -225,7 +222,8 @@ protected:
 
 protected:
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  typedef safe_mode::safe_container<iterator>        safe_container;
+  typedef safe_mode::safe_container<
+    ordered_index_impl>                              safe_super;
 #endif
 
   typedef typename call_traits<
@@ -233,9 +231,11 @@ protected:
   typedef typename call_traits<
     key_type>::param_type                            key_param_type;
 
-  /* needed to avoid commas in some macros */
+  /* Needed to avoid commas in BOOST_MULTI_INDEX_OVERLOADS_TO_VARTEMPL
+   * expansion.
+   */
 
-  typedef std::pair<iterator,bool>                   pair_return_type;
+  typedef std::pair<iterator,bool>                   emplace_return_type;
 
 public:
 
@@ -298,7 +298,7 @@ public:
   /* modifiers */
 
   BOOST_MULTI_INDEX_OVERLOADS_TO_VARTEMPL(
-    pair_return_type,emplace,emplace_impl)
+    emplace_return_type,emplace,emplace_impl)
 
   BOOST_MULTI_INDEX_OVERLOADS_TO_VARTEMPL_EXTRA_ARG(
     iterator,emplace_hint,emplace_hint_impl,iterator,position)
@@ -341,7 +341,12 @@ public:
   void insert(InputIterator first,InputIterator last)
   {
     BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-    for(;first!=last;++first)this->final_insert_ref_(*first);
+    index_node_type* hint=header(); /* end() */
+    for(;first!=last;++first){
+      hint=this->final_insert_ref_(
+        *first,static_cast<final_node_type*>(hint)).first;
+      index_node_type::increment(hint);
+    }
   }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
@@ -524,75 +529,6 @@ public:
     this->final_clear_();
   }
 
-  template<typename Index>
-  BOOST_MULTI_INDEX_ENABLE_IF_MERGEABLE(ordered_index_impl,Index,void)
-  merge(Index& x)
-  {
-    merge(x,x.begin(),x.end());
-  }
-
-  template<typename Index>
-  BOOST_MULTI_INDEX_ENABLE_IF_MERGEABLE(ordered_index_impl,Index,void)
-  merge(BOOST_RV_REF(Index) x){merge(static_cast<Index&>(x));}
-
-  template<typename Index>
-  BOOST_MULTI_INDEX_ENABLE_IF_MERGEABLE(
-    ordered_index_impl,Index,pair_return_type)
-  merge(Index& x,BOOST_DEDUCED_TYPENAME Index::iterator i)
-  {
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(i);
-    BOOST_MULTI_INDEX_CHECK_DEREFERENCEABLE_ITERATOR(i);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(i,x);
-    BOOST_MULTI_INDEX_CHECK_EQUAL_ALLOCATORS(*this,x);
-    BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-    if(x.end().get_node()==this->header()){ /* same container */
-      return std::pair<iterator,bool>(
-        make_iterator(static_cast<final_node_type*>(i.get_node())),true);
-    }
-    else{
-      std::pair<final_node_type*,bool> p=this->final_transfer_(
-        x,static_cast<final_node_type*>(i.get_node()));
-      return std::pair<iterator,bool>(make_iterator(p.first),p.second);
-    }
-  }
-
-  template<typename Index>
-  BOOST_MULTI_INDEX_ENABLE_IF_MERGEABLE(
-    ordered_index_impl,Index,pair_return_type)
-  merge(BOOST_RV_REF(Index) x,BOOST_DEDUCED_TYPENAME Index::iterator i)
-  {
-    return merge(static_cast<Index&>(x),i);
-  }
-
-  template<typename Index>
-  BOOST_MULTI_INDEX_ENABLE_IF_MERGEABLE(ordered_index_impl,Index,void)
-  merge(
-    Index& x,
-    BOOST_DEDUCED_TYPENAME Index::iterator first,
-    BOOST_DEDUCED_TYPENAME Index::iterator last)
-  {
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(first);
-    BOOST_MULTI_INDEX_CHECK_VALID_ITERATOR(last);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(first,x);
-    BOOST_MULTI_INDEX_CHECK_IS_OWNER(last,x);
-    BOOST_MULTI_INDEX_CHECK_VALID_RANGE(first,last);
-    BOOST_MULTI_INDEX_CHECK_EQUAL_ALLOCATORS(*this,x);
-    BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT;
-    if(x.end().get_node()!=this->header()){ /* different containers */
-      this->final_transfer_range_(x,first,last);
-    }
-  }
-
-  template<typename Index>
-  BOOST_MULTI_INDEX_ENABLE_IF_MERGEABLE(ordered_index_impl,Index,void)
-  merge(
-    BOOST_RV_REF(Index) x,
-    BOOST_DEDUCED_TYPENAME Index::iterator first,
-    BOOST_DEDUCED_TYPENAME Index::iterator last)
-  {
-    merge(static_cast<Index&>(x),first,last);
-  }
-
   /* observers */
 
   key_from_value key_extractor()const{return key;}
@@ -630,19 +566,6 @@ public:
     std::pair<iterator,iterator> p=equal_range(x,comp);
     size_type n=static_cast<size_type>(std::distance(p.first,p.second));
     return n;
-  }
-
-  template<typename CompatibleKey>
-  bool contains(const CompatibleKey& x)const
-  {
-    return contains(x,comp_);
-  }
-
-  template<typename CompatibleKey,typename CompatibleCompare>
-  bool contains(
-    const CompatibleKey& x,const CompatibleCompare& comp)const
-  {
-    return find(x,comp)!=end();
   }
 
   template<typename CompatibleKey>
@@ -723,11 +646,6 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     super(args_list.get_tail(),al),
     key(tuples::get<0>(args_list.get_head())),
     comp_(tuples::get<1>(args_list.get_head()))
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    ,safe(*this)
-#endif
-
   {
     empty_initialize();
   }
@@ -736,13 +654,13 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     const ordered_index_impl<
       KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x):
     super(x),
-    key(x.key),
-    comp_(x.comp_)
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    ,safe(*this)
+    safe_super(),
 #endif
 
+    key(x.key),
+    comp_(x.comp_)
   {
     /* Copy ctor just takes the key and compare objects from x. The rest is
      * done in a subsequent call to copy_().
@@ -754,13 +672,13 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
        KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x,
      do_not_copy_elements_tag):
     super(x,do_not_copy_elements_tag()),
-    key(x.key),
-    comp_(x.comp_)
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    ,safe(*this)
+    safe_super(),
 #endif
 
+    key(x.key),
+    comp_(x.comp_)
   {
     empty_initialize();
   }
@@ -772,9 +690,9 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
   iterator       make_iterator(index_node_type* node)
-    {return iterator(node,&safe);}
+    {return iterator(node,this);}
   const_iterator make_iterator(index_node_type* node)const
-    {return const_iterator(node,const_cast<safe_container*>(&safe));}
+    {return const_iterator(node,const_cast<ordered_index_impl*>(this));}
 #else
   iterator       make_iterator(index_node_type* node){return iterator(node);}
   const_iterator make_iterator(index_node_type* node)const
@@ -878,15 +796,14 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     return res;
   }
 
-  template<typename Dst>
-  void extract_(index_node_type* x,Dst dst)
+  void extract_(index_node_type* x)
   {
     node_impl_type::rebalance_for_extract(
       x->impl(),header()->parent(),header()->left(),header()->right());
-    super::extract_(x,dst.next());
+    super::extract_(x);
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    transfer_iterators(dst.get(),x);
+    detach_iterators(x);
 #endif
   }
 
@@ -901,7 +818,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     empty_initialize();
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    safe.detach_dereferenceable_iterators();
+    safe_super::detach_dereferenceable_iterators();
 #endif
   }
 
@@ -915,7 +832,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
     adl_swap(comp_,x.comp_);
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    safe.swap(x.safe);
+    safe_super::swap(x);
 #endif
 
     super::swap_(x,swap_allocators);
@@ -926,7 +843,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>& x)
   {
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-    safe.swap(x.safe);
+    safe_super::swap(x);
 #endif
 
     super::swap_elements_(x);
@@ -968,7 +885,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       b=in_place(x->value(),x,Category());
     }
     BOOST_CATCH(...){
-      extract_(x,invalidate_iterators());
+      extract_(x);
       BOOST_RETHROW;
     }
     BOOST_CATCH_END
@@ -978,7 +895,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       BOOST_TRY{
         link_info inf;
         if(!link_point(key(x->value()),inf,Category())){
-          super::extract_(x,invalidate_iterators());
+          super::extract_(x);
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
           detach_iterators(x);
@@ -988,7 +905,7 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
         node_impl_type::link(x->impl(),inf.side,inf.pos,header()->impl());
       }
       BOOST_CATCH(...){
-        super::extract_(x,invalidate_iterators());
+        super::extract_(x);
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
         detach_iterators(x);
@@ -1342,13 +1259,6 @@ private:
     iterator it=make_iterator(x);
     safe_mode::detach_equivalent_iterators(it);
   }
-
-  template<typename Dst>
-  void transfer_iterators(Dst& dst,index_node_type* x)
-  {
-    iterator it=make_iterator(x);
-    safe_mode::transfer_equivalent_iterators(dst,it);
-  }
 #endif
 
   template<BOOST_MULTI_INDEX_TEMPLATE_PARAM_PACK>
@@ -1507,7 +1417,9 @@ private:
     }
     else if(comp_(key(x->value()),key(position->value()))){
       /* inconsistent rearrangement */
-      throw_exception(bad_archive_exception());
+      throw_exception(
+        archive::archive_exception(
+          archive::archive_exception::other_exception));
     }
     else index_node_type::increment(position);
 
@@ -1523,10 +1435,6 @@ private:
 protected: /* for the benefit of AugmentPolicy::augmented_interface */
   key_from_value key;
   key_compare    comp_;
-
-#if defined(BOOST_MULTI_INDEX_ENABLE_SAFE_MODE)
-  safe_container safe;
-#endif
 
 #if defined(BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING)&&\
     BOOST_WORKAROUND(__MWERKS__,<=0x3003)
@@ -1587,10 +1495,6 @@ protected:
   ordered_index(const ordered_index& x,do_not_copy_elements_tag):
     super(x,do_not_copy_elements_tag()){}
 };
-
-#if defined(BOOST_MSVC)
-#pragma warning(pop) /* C4355 */
-#endif
 
 /* comparison */
 
@@ -1719,22 +1623,16 @@ void swap(
 
 /* Boost.Foreach compatibility */
 
-namespace boost{
-namespace foreach{
-
-template<typename>
-struct is_noncopyable;
-
 template<
   typename KeyFromValue,typename Compare,
   typename SuperMeta,typename TagList,typename Category,typename AugmentPolicy
 >
-struct is_noncopyable<
+inline boost::mpl::true_* boost_foreach_is_noncopyable(
   boost::multi_index::detail::ordered_index<
-    KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>
->:boost::mpl::true_{};
-
-}
+    KeyFromValue,Compare,SuperMeta,TagList,Category,AugmentPolicy>*&,
+  boost_foreach_argument_dependent_lookup_hack)
+{
+  return 0;
 }
 
 #undef BOOST_MULTI_INDEX_ORD_INDEX_CHECK_INVARIANT

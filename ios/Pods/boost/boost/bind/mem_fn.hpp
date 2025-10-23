@@ -21,10 +21,9 @@
 //  See http://www.boost.org/libs/bind/mem_fn.html for documentation.
 //
 
-#include <boost/bind/detail/requires_cxx11.hpp>
-#include <boost/get_pointer.hpp>
 #include <boost/config.hpp>
-#include <boost/config/workaround.hpp>
+#include <boost/get_pointer.hpp>
+#include <boost/detail/workaround.hpp>
 
 namespace boost
 {

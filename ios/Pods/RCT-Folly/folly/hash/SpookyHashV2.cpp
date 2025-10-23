@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,18 +78,18 @@ void SpookyHashV2::Short(
         // handle all complete sets of 32 bytes
         for (; u.p64 < end; u.p64 += 4)
         {
-            c += Read8(u.p64, 0);
-            d += Read8(u.p64, 1);
+            c += u.p64[0];
+            d += u.p64[1];
             ShortMix(a,b,c,d);
-            a += Read8(u.p64, 2);
-            b += Read8(u.p64, 3);
+            a += u.p64[2];
+            b += u.p64[3];
         }
 
         //Handle the case of 16+ remaining bytes.
         if (remainder >= 16)
         {
-            c += Read8(u.p64, 0);
-            d += Read8(u.p64, 1);
+            c += u.p64[0];
+            d += u.p64[1];
             ShortMix(a,b,c,d);
             u.p64 += 2;
             remainder -= 16;
@@ -102,47 +102,47 @@ void SpookyHashV2::Short(
     {
     case 15:
         d += ((uint64_t)u.p8[14]) << 48;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 14:
         d += ((uint64_t)u.p8[13]) << 40;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 13:
         d += ((uint64_t)u.p8[12]) << 32;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 12:
         d += u.p32[2];
         c += u.p64[0];
         break;
     case 11:
         d += ((uint64_t)u.p8[10]) << 16;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 10:
         d += ((uint64_t)u.p8[9]) << 8;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 9:
         d += (uint64_t)u.p8[8];
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 8:
         c += u.p64[0];
         break;
     case 7:
         c += ((uint64_t)u.p8[6]) << 48;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 6:
         c += ((uint64_t)u.p8[5]) << 40;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 5:
         c += ((uint64_t)u.p8[4]) << 32;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 4:
         c += u.p32[0];
         break;
     case 3:
         c += ((uint64_t)u.p8[2]) << 16;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 2:
         c += ((uint64_t)u.p8[1]) << 8;
-        [[fallthrough]];
+        FOLLY_FALLTHROUGH;
     case 1:
         c += (uint64_t)u.p8[0];
         break;

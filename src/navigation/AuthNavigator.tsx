@@ -1,76 +1,29 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { COLORS } from '../constants';
-import { AuthStackParamList } from '../types/navigation';
-import { ROUTES } from '../types/navigation';
 
-// Import auth screens
+// Import existing auth screens
 import LandingScreen from '../screens/LandingScreen';
-import SignUpScreen from '../screens/SignUpScreen';
 import LoginScreen from '../screens/LoginScreen';
-import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import SignUpScreen from '../screens/SignUpScreen';
 import SignUpPaymentScreen from '../screens/SignUpPaymentScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
-const Stack = createStackNavigator<AuthStackParamList>();
+const Stack = createStackNavigator();
 
 const AuthNavigator = () => {
   return (
     <Stack.Navigator
-      testID="auth-stack"
-      initialRouteName={ROUTES.LANDING}
       screenOptions={{
-        headerStyle: {
-          backgroundColor: COLORS.surface,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-        headerTintColor: COLORS.text,
-        headerTitleStyle: {
-          fontWeight: '600',
-          fontSize: 18,
-        },
+        headerShown: false,
         cardStyle: { backgroundColor: COLORS.background },
       }}
     >
-      <Stack.Screen
-        name={ROUTES.LANDING}
-        component={LandingScreen}
-        options={{
-          headerShown: false, // Hide header for full-bleed design
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.SIGN_UP}
-        component={SignUpScreen}
-        options={{
-          title: 'Sign Up',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.LOGIN}
-        component={LoginScreen}
-        options={{
-          title: 'Login',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.FORGOT_PASSWORD}
-        component={ForgotPasswordScreen}
-        options={{
-          title: 'Forgot Password',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name={ROUTES.SIGN_UP_PAYMENT}
-        component={SignUpPaymentScreen}
-        options={{
-          title: 'Payment Setup',
-          headerBackTitle: 'Back',
-        }}
-      />
+      <Stack.Screen name="Landing" component={LandingScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen name="SignUpPayment" component={SignUpPaymentScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 };

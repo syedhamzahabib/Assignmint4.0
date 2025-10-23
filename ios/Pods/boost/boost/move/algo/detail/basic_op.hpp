@@ -22,7 +22,6 @@
 #include <boost/move/utility_core.hpp>
 #include <boost/move/adl_move_swap.hpp>
 #include <boost/move/detail/iterator_traits.hpp>
-#include <boost/move/algo/move.hpp>
 
 namespace boost {
 namespace movelib {

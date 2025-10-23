@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,32 +9,110 @@ import {
   Alert,
   SafeAreaView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Icon, { Icons } from '../components/common/Icon';
 import { useAuth } from '../state/AuthProvider';
 import { analytics, ANALYTICS_EVENTS } from '../services/AnalyticsService';
-import { DEV_MODE } from '../constants';
+import { DEV_MODE, COLORS } from '../constants';
+import { firestoreService } from '../services/firestoreService';
+import { stripeService } from '../services/stripeService';
+import { User, Task, Transaction } from '../types/firestore';
 
 const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const { logout, user, mode } = useAuth();
+  const [userData, setUserData] = useState<User | null>(null);
+  const [walletData, setWalletData] = useState<any>(null);
+  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock user data
-  const userData = {
-    name: 'Alex Johnson',
-    title: 'Web Developer & Designer',
-    avatar: '👤',
-    trustScore: 95,
-    rating: 4.8,
-    totalReviews: 47,
-    tasksCompleted: 47,
-    tasksPosted: 12,
-    totalEarnings: 5240,
-    availableBalance: 1250,
-    withdrawnAmount: 3200,
-    badges: ['Top Performer', 'On-Time', 'Quality Expert'],
-  };
+  // Load user data from Firestore
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Load user profile
+        const profile = await firestoreService.getUser(user.uid);
+        if (profile) {
+          setUserData(profile);
+        } else {
+          // Create user profile if it doesn't exist
+          const newUser: Omit<User, 'uid' | 'createdAt' | 'updatedAt'> = {
+            email: user.email || '',
+            displayName: user.displayName || user.email || 'Unknown User',
+            photoURL: user.photoURL || undefined,
+            role: 'both',
+            trustScore: 100,
+            rating: 5.0,
+            totalReviews: 0,
+            tasksCompleted: 0,
+            tasksPosted: 0,
+            totalEarnings: 0,
+            badges: [],
+            isVerified: false,
+            preferences: {
+              notifications: true,
+              emailUpdates: true,
+              language: 'en',
+            },
+          };
+          
+          const userId = await firestoreService.createUser(newUser);
+          const createdUser = await firestoreService.getUser(userId);
+          setUserData(createdUser);
+        }
+
+        // Load wallet data
+        try {
+          const wallet = await stripeService.getWalletBalance(user.uid);
+          setWalletData(wallet);
+        } catch (error) {
+          console.warn('⚠️ Wallet data not available:', error);
+          setWalletData({
+            balance: 0,
+            pendingBalance: 0,
+            totalEarnings: 0,
+            totalWithdrawn: 0,
+          });
+        }
+
+        // Load recent tasks
+        try {
+          const tasks = await firestoreService.getTasks({
+            createdBy: user.uid,
+            limit: 10,
+          });
+          setRecentTasks(tasks);
+        } catch (error) {
+          console.warn('⚠️ Recent tasks not available:', error);
+          setRecentTasks([]);
+        }
+
+        // Load recent transactions
+        try {
+          const transactions = await stripeService.getTransactionHistory(user.uid, 10);
+          setRecentTransactions(transactions);
+        } catch (error) {
+          console.warn('⚠️ Transaction history not available:', error);
+          setRecentTransactions([]);
+        }
+
+      } catch (error) {
+        console.error('❌ Error loading user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   // Mock recent activity
   const recentActivity = [
@@ -209,34 +287,57 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
-  const renderOverviewTab = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      {/* Quick Stats */}
-      <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>Quick Stats</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Icon name={Icons.star} size={24} color="#FFD700" />
-            <Text style={styles.statValue}>{userData.rating}</Text>
-            <Text style={styles.statLabel}>Rating</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Icon name={Icons.check} size={24} color="#34C759" />
-            <Text style={styles.statValue}>{userData.tasksCompleted}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Icon name={Icons.edit} size={24} color="#007AFF" />
-            <Text style={styles.statValue}>{userData.tasksPosted}</Text>
-            <Text style={styles.statLabel}>Posted</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Icon name={Icons.money} size={24} color="#34C759" />
-            <Text style={styles.statValue}>${userData.totalEarnings}</Text>
-            <Text style={styles.statLabel}>Earned</Text>
+  const renderOverviewTab = () => {
+    if (loading) {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Loading profile...</Text>
           </View>
         </View>
-      </View>
+      );
+    }
+
+    if (!userData) {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Unable to load profile data</Text>
+            <Text style={styles.errorSubtext}>Please try again later</Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+        {/* Quick Stats */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Quick Stats</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Icon name={Icons.star} size={24} color="#FFD700" />
+              <Text style={styles.statValue}>{userData.rating || 0}</Text>
+              <Text style={styles.statLabel}>Rating</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Icon name={Icons.check} size={24} color="#34C759" />
+              <Text style={styles.statValue}>{userData.tasksCompleted || 0}</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Icon name={Icons.edit} size={24} color="#007AFF" />
+              <Text style={styles.statValue}>{userData.tasksPosted || 0}</Text>
+              <Text style={styles.statLabel}>Posted</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Icon name={Icons.money} size={24} color="#34C759" />
+              <Text style={styles.statValue}>${walletData?.totalEarnings || 0}</Text>
+              <Text style={styles.statLabel}>Earned</Text>
+            </View>
+          </View>
+        </View>
 
       {/* Badges */}
       <View style={styles.badgesSection}>
@@ -277,6 +378,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
     </ScrollView>
   );
+  };
 
   const renderActivityTab = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
@@ -415,11 +517,11 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Icon name={Icons.user} size={24} color="#8E8E93" />
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.userName}>{userData.name}</Text>
-            <Text style={styles.userTitle}>{userData.title}</Text>
+            <Text style={styles.userName}>{userData?.name || 'Loading...'}</Text>
+            <Text style={styles.userTitle}>{userData?.title || 'User'}</Text>
             <View style={styles.trustScoreContainer}>
               <Text style={styles.trustScoreLabel}>Trust Score:</Text>
-              <Text style={styles.trustScore}>{userData.trustScore}%</Text>
+              <Text style={styles.trustScore}>{userData?.trustScore || 0}%</Text>
             </View>
           </View>
         </View>
@@ -1034,6 +1136,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#007AFF',
+  },
+  // Loading and Error States
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.text,
+    marginTop: 10,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: COLORS.error || '#FF3B30',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: COLORS.textSecondary || '#8E8E93',
+    textAlign: 'center',
+    marginTop: 5,
   },
 });
 

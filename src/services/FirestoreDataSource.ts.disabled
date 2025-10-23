@@ -1,0 +1,716 @@
+// FirestoreDataSource.ts - Real Firestore implementation for production
+import { DataSource, Task, UserProfile, Notification, Message } from './DataSource';
+import { collection, query, where, getDocs, getDoc, addDoc, writeBatch, doc, updateDoc, serverTimestamp, orderBy, limit, runTransaction } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+
+export class FirestoreDataSource implements DataSource {
+  // Task operations
+  async getTasks(): Promise<Task[]> {
+    try {
+      const tasksRef = collection(db, 'tasks');
+      const q = query(
+        tasksRef,
+        where('isActive', '==', true),
+        where('isPublic', '==', true),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: doc.data().deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      })) as Task[];
+    } catch (error) {
+      console.error('Error getting tasks:', error);
+      throw error;
+    }
+  }
+
+  async getTaskById(id: string): Promise<Task | null> {
+    try {
+      const doc = await this.db.collection('tasks').doc(id).get();
+      if (!doc.exists) {
+        return null;
+      }
+
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data?.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: data?.deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as Task;
+    } catch (error) {
+      console.error('Error getting task by ID:', error);
+      throw error;
+    }
+  }
+
+  async createTask(task: Omit<Task, 'id' | 'createdAt'>): Promise<Task> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const taskData = {
+        ...task,
+        requesterId: currentUser.uid,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        viewCount: 0,
+        applicantCount: 0,
+        isActive: true,
+        isPublic: true,
+        matchingType: 'manual',
+      };
+
+      const docRef = await this.db.collection('tasks').add(taskData);
+      const newTask: Task = {
+        id: docRef.id,
+        ...taskData,
+        createdAt: new Date().toISOString(),
+      } as Task;
+
+      return newTask;
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
+  }
+
+  async updateTask(id: string, updates: Partial<Task>): Promise<Task> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const taskRef = this.db.collection('tasks').doc(id);
+      const taskDoc = await taskRef.get();
+      
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const taskData = taskDoc.data();
+      if (taskData?.requesterId !== currentUser.uid) {
+        throw new Error('Only the task owner can update the task');
+      }
+
+      await taskRef.update({
+        ...updates,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      const updatedDoc = await taskRef.get();
+      const updatedData = updatedDoc.data();
+      
+      return {
+        id: updatedDoc.id,
+        ...updatedData,
+        createdAt: updatedData?.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: updatedData?.deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as Task;
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const taskRef = this.db.collection('tasks').doc(id);
+      const taskDoc = await taskRef.get();
+      
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const taskData = taskDoc.data();
+      if (taskData?.requesterId !== currentUser.uid) {
+        throw new Error('Only the task owner can delete the task');
+      }
+
+      await taskRef.delete();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      throw error;
+    }
+  }
+
+  async claimTask(taskId: string, expertId: string): Promise<Task> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser || currentUser.uid !== expertId) {
+        throw new Error('User not authenticated');
+      }
+
+      const taskRef = this.db.collection('tasks').doc(taskId);
+      
+      const result = await this.db.runTransaction(async (transaction) => {
+        const taskDoc = await transaction.get(taskRef);
+        
+        if (!taskDoc.exists) {
+          throw new Error('Task not found');
+        }
+
+        const taskData = taskDoc.data();
+        if (taskData?.status !== 'open' && taskData?.status !== 'awaiting_expert') {
+          throw new Error('Task is not available for claiming');
+        }
+
+        if (taskData?.requesterId === expertId) {
+          throw new Error('Cannot claim your own task');
+        }
+
+        const updatedTask = {
+          ...taskData,
+          status: 'claimed',
+          expertId,
+          expertName: currentUser.displayName || 'Anonymous',
+          expertRating: 0, // Will be updated from user profile
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        };
+
+        transaction.update(taskRef, updatedTask);
+        return updatedTask;
+      });
+
+      return {
+        id: taskId,
+        ...result,
+        createdAt: result.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: result.deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as Task;
+    } catch (error) {
+      console.error('Error claiming task:', error);
+      throw error;
+    }
+  }
+
+  async submitTask(taskId: string, expertId: string, submission: any): Promise<Task> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser || currentUser.uid !== expertId) {
+        throw new Error('User not authenticated');
+      }
+
+      const taskRef = this.db.collection('tasks').doc(taskId);
+      
+      const result = await this.db.runTransaction(async (transaction) => {
+        const taskDoc = await transaction.get(taskRef);
+        
+        if (!taskDoc.exists) {
+          throw new Error('Task not found');
+        }
+
+        const taskData = taskDoc.data();
+        if (taskData?.status !== 'claimed') {
+          throw new Error('Task must be claimed before submission');
+        }
+
+        if (taskData?.expertId !== expertId) {
+          throw new Error('Only the assigned expert can submit work');
+        }
+
+        const updatedTask = {
+          ...taskData,
+          status: 'submitted',
+          submission,
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        };
+
+        transaction.update(taskRef, updatedTask);
+        return updatedTask;
+      });
+
+      return {
+        id: taskId,
+        ...result,
+        createdAt: result.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: result.deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as Task;
+    } catch (error) {
+      console.error('Error submitting task:', error);
+      throw error;
+    }
+  }
+
+  async acceptTask(taskId: string, ownerId: string): Promise<Task> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser || currentUser.uid !== ownerId) {
+        throw new Error('User not authenticated');
+      }
+
+      const taskRef = this.db.collection('tasks').doc(taskId);
+      
+      const result = await this.db.runTransaction(async (transaction) => {
+        const taskDoc = await transaction.get(taskRef);
+        
+        if (!taskDoc.exists) {
+          throw new Error('Task not found');
+        }
+
+        const taskData = taskDoc.data();
+        if (taskData?.status !== 'submitted') {
+          throw new Error('Task must be submitted before acceptance');
+        }
+
+        if (taskData?.requesterId !== ownerId) {
+          throw new Error('Only the task owner can accept submission');
+        }
+
+        const updatedTask = {
+          ...taskData,
+          status: 'completed',
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        };
+
+        transaction.update(taskRef, updatedTask);
+        return updatedTask;
+      });
+
+      return {
+        id: taskId,
+        ...result,
+        createdAt: result.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: result.deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as Task;
+    } catch (error) {
+      console.error('Error accepting task:', error);
+      throw error;
+    }
+  }
+
+  async rejectTask(taskId: string, ownerId: string, reason: string): Promise<Task> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser || currentUser.uid !== ownerId) {
+        throw new Error('User not authenticated');
+      }
+
+      const taskRef = this.db.collection('tasks').doc(taskId);
+      
+      const result = await this.db.runTransaction(async (transaction) => {
+        const taskDoc = await transaction.get(taskRef);
+        
+        if (!taskDoc.exists) {
+          throw new Error('Task not found');
+        }
+
+        const taskData = taskDoc.data();
+        if (taskData?.status !== 'submitted') {
+          throw new Error('Task must be submitted before rejection');
+        }
+
+        if (taskData?.requesterId !== ownerId) {
+          throw new Error('Only the task owner can reject submission');
+        }
+
+        const updatedTask = {
+          ...taskData,
+          status: 'claimed',
+          rejectionReason: reason,
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        };
+
+        transaction.update(taskRef, updatedTask);
+        return updatedTask;
+      });
+
+      return {
+        id: taskId,
+        ...result,
+        createdAt: result.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: result.deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as Task;
+    } catch (error) {
+      console.error('Error rejecting task:', error);
+      throw error;
+    }
+  }
+
+  // User operations
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    try {
+      const doc = await this.db.collection('users').doc(userId).get();
+      if (!doc.exists) {
+        return null;
+      }
+
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        joinDate: data?.joinDate?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as UserProfile;
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      throw error;
+    }
+  }
+
+  async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser || currentUser.uid !== userId) {
+        throw new Error('User not authenticated');
+      }
+
+      const userRef = this.db.collection('users').doc(userId);
+      await userRef.update({
+        ...updates,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      const updatedDoc = await userRef.get();
+      const updatedData = updatedDoc.data();
+      
+      return {
+        id: updatedDoc.id,
+        ...updatedData,
+        joinDate: updatedData?.joinDate?.toDate?.()?.toISOString() || new Date().toISOString(),
+      } as UserProfile;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+  }
+
+  async createUserProfile(profile: Omit<UserProfile, 'id' | 'joinDate' | 'memberSince'>): Promise<UserProfile> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const profileData = {
+        ...profile,
+        joinDate: firestore.FieldValue.serverTimestamp(),
+        memberSince: new Date().getFullYear(),
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      };
+
+      await this.db.collection('users').doc(currentUser.uid).set(profileData);
+      
+      const newProfile: UserProfile = {
+        id: currentUser.uid,
+        ...profileData,
+        joinDate: new Date().toISOString(),
+      } as UserProfile;
+
+      return newProfile;
+    } catch (error) {
+      console.error('Error creating user profile:', error);
+      throw error;
+    }
+  }
+
+  // Notification operations
+  async getNotifications(userId: string): Promise<Notification[]> {
+    try {
+      const snapshot = await this.db
+        .collection('notifications')
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .get();
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        time: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        timestamp: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      })) as Notification[];
+    } catch (error) {
+      console.error('Error getting notifications:', error);
+      throw error;
+    }
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      await this.db.collection('notifications').doc(notificationId).update({
+        read: true,
+        isRead: true,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      throw error;
+    }
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser || currentUser.uid !== userId) {
+        throw new Error('User not authenticated');
+      }
+
+      const batch = this.db.batch();
+      const notifications = await this.db
+        .collection('notifications')
+        .where('userId', '==', userId)
+        .where('read', '==', false)
+        .get();
+
+      notifications.docs.forEach(doc => {
+        batch.update(doc.ref, {
+          read: true,
+          isRead: true,
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        });
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      throw error;
+    }
+  }
+
+  async createNotification(notification: Omit<Notification, 'id'>): Promise<Notification> {
+    try {
+      const notificationData = {
+        ...notification,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      };
+
+      const docRef = await this.db.collection('notifications').add(notificationData);
+      
+      const newNotification: Notification = {
+        id: docRef.id,
+        ...notificationData,
+        time: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+      } as Notification;
+
+      return newNotification;
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      throw error;
+    }
+  }
+
+  // Message operations
+  async getTaskMessages(taskId: string): Promise<Message[]> {
+    try {
+      const snapshot = await this.db
+        .collection('taskMessages')
+        .doc(taskId)
+        .collection('messages')
+        .orderBy('timestamp', 'asc')
+        .get();
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
+      })) as Message[];
+    } catch (error) {
+      console.error('Error getting task messages:', error);
+      throw error;
+    }
+  }
+
+  async sendMessage(message: Omit<Message, 'id' | 'timestamp'>): Promise<Message> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const messageData = {
+        ...message,
+        timestamp: firestore.FieldValue.serverTimestamp(),
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      };
+
+      const docRef = await this.db
+        .collection('taskMessages')
+        .doc(message.taskId)
+        .collection('messages')
+        .add(messageData);
+
+      const newMessage: Message = {
+        id: docRef.id,
+        ...messageData,
+        timestamp: new Date().toISOString(),
+      } as Message;
+
+      return newMessage;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  }
+
+  // Rating operations
+  async createRating(rating: any): Promise<any> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const ratingData = {
+        ...rating,
+        fromUserId: currentUser.uid,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      };
+
+      const docRef = await this.db.collection('ratings').add(ratingData);
+      
+      const newRating = {
+        id: docRef.id,
+        ...ratingData,
+        createdAt: new Date().toISOString(),
+      };
+
+      return newRating;
+    } catch (error) {
+      console.error('Error creating rating:', error);
+      throw error;
+    }
+  }
+
+  async getUserRatings(userId: string): Promise<any[]> {
+    try {
+      const snapshot = await this.db
+        .collection('ratings')
+        .where('toUserId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .get();
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      }));
+    } catch (error) {
+      console.error('Error getting user ratings:', error);
+      throw error;
+    }
+  }
+
+  async getUserRatingSummary(userId: string): Promise<any> {
+    try {
+      const ratings = await this.getUserRatings(userId);
+      
+      if (ratings.length === 0) {
+        return { avgRating: 0, totalRatings: 0 };
+      }
+
+      const totalRating = ratings.reduce((sum, r) => sum + r.rating, 0);
+      const avgRating = totalRating / ratings.length;
+
+      return {
+        avgRating: Math.round(avgRating * 100) / 100,
+        totalRatings: ratings.length,
+      };
+    } catch (error) {
+      console.error('Error getting user rating summary:', error);
+      throw error;
+    }
+  }
+
+  // Search and filtering
+  async searchTasks(query: string, filters?: any): Promise<Task[]> {
+    try {
+      let tasksQuery = this.db.collection('tasks')
+        .where('isActive', '==', true)
+        .where('isPublic', '==', true);
+
+      if (filters?.subject) {
+        tasksQuery = tasksQuery.where('subject', '==', filters.subject);
+      }
+      if (filters?.status) {
+        tasksQuery = tasksQuery.where('status', '==', filters.status);
+      }
+      if (filters?.urgency) {
+        tasksQuery = tasksQuery.where('urgency', '==', filters.urgency);
+      }
+
+      const snapshot = await tasksQuery.orderBy('createdAt', 'desc').get();
+      let tasks = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: doc.data().deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      })) as Task[];
+
+      if (query) {
+        const lowerQuery = query.toLowerCase();
+        tasks = tasks.filter(task =>
+          task.title.toLowerCase().includes(lowerQuery) ||
+          task.description.toLowerCase().includes(lowerQuery) ||
+          task.subject.toLowerCase().includes(lowerQuery) ||
+          task.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+        );
+      }
+
+      return tasks;
+    } catch (error) {
+      console.error('Error searching tasks:', error);
+      throw error;
+    }
+  }
+
+  async getTasksByUser(userId: string, type: 'posted' | 'claimed'): Promise<Task[]> {
+    try {
+      let query;
+      if (type === 'posted') {
+        query = this.db.collection('tasks').where('requesterId', '==', userId);
+      } else {
+        query = this.db.collection('tasks').where('expertId', '==', userId);
+      }
+
+      const snapshot = await query.orderBy('createdAt', 'desc').get();
+      
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        deadline: doc.data().deadline?.toDate?.()?.toISOString() || new Date().toISOString(),
+      })) as Task[];
+    } catch (error) {
+      console.error('Error getting tasks by user:', error);
+      throw error;
+    }
+  }
+
+  async getTopRatedUsers(limit: number = 10): Promise<UserProfile[]> {
+    try {
+      const snapshot = await this.db
+        .collection('users')
+        .where('expertStats.avgRating', '>', 0)
+        .orderBy('expertStats.avgRating', 'desc')
+        .limit(limit)
+        .get();
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        joinDate: doc.data().joinDate?.toDate?.()?.toISOString() || new Date().toISOString(),
+      })) as UserProfile[];
+    } catch (error) {
+      console.error('Error getting top rated users:', error);
+      throw error;
+    }
+  }
+}

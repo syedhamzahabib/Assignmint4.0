@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 #pragma once
 
 #include <memory>
-#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -108,7 +107,7 @@ template <
     typename KeyEqualOrVoid,
     typename AllocOrVoid,
     typename ItemType>
-struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
+struct BasePolicy
     : private ObjectHolder<
           'H',
           Defaulted<HasherOrVoid, DefaultHasher<KeyType>>>,
@@ -164,15 +163,10 @@ struct FOLLY_MSVC_DECLSPEC(empty_bases) BasePolicy
       std::is_nothrow_default_constructible<Alloc>::value;
 
   static constexpr bool kSwapIsNoexcept = kAllocIsAlwaysEqual &&
-      std::is_nothrow_swappable_v<Hasher> &&
-      std::is_nothrow_swappable_v<KeyEqual>;
+      IsNothrowSwappable<Hasher>{} && IsNothrowSwappable<KeyEqual>{};
 
   static constexpr bool isAvalanchingHasher() {
     return IsAvalanchingHasher<Hasher, Key>::value;
-  }
-
-  static constexpr bool shouldAssume32BitHash() {
-    return ShouldAssume32BitHash<Hasher>::value;
   }
 
   //////// internal types and constants
@@ -523,17 +517,6 @@ class ValueContainerPolicy : public BasePolicy<
   using Item = typename Super::Item;
   using ItemIter = typename Super::ItemIter;
   using Value = typename Super::Value;
-  using KeyEqual = typename Super::KeyEqual;
-  using Hasher = typename Super::Hasher;
-  using Mapped = typename Super::Mapped;
-
-  static constexpr bool kDefaultConstructIsNoexcept =
-      Super::kDefaultConstructIsNoexcept;
-  static constexpr bool kAllocIsAlwaysEqual = Super::kAllocIsAlwaysEqual;
-  static constexpr bool kEnableItemIteration = Super::kEnableItemIteration;
-  static constexpr bool kContinuousCapacity = Super::kContinuousCapacity;
-  static constexpr auto isAvalanchingHasher = Super::isAvalanchingHasher;
-  static constexpr bool kSwapIsNoexcept = Super::kSwapIsNoexcept;
 
  private:
   using ByteAlloc = typename Super::ByteAlloc;
@@ -627,7 +610,7 @@ class ValueContainerPolicy : public BasePolicy<
         // location), but it seems highly likely that it will also cause
         // the compiler to drop such assumptions that are violated due
         // to our UB const_cast in moveValue.
-        destroyItem(*std::launder(std::addressof(src)));
+        destroyItem(*launder(std::addressof(src)));
       } else {
         destroyItem(src);
       }
@@ -943,7 +926,7 @@ class VectorContainerIterator : public BaseIter<ValuePtr, uint32_t> {
   pointer operator->() const { return current_; }
 
   VectorContainerIterator& operator++() {
-    if (FOLLY_UNLIKELY(current_ == lowest_)) {
+    if (UNLIKELY(current_ == lowest_)) {
       current_ = nullptr;
     } else {
       --current_;
@@ -1063,7 +1046,7 @@ class VectorContainerPolicy : public BasePolicy<
   static constexpr bool valueIsTriviallyCopyable() {
     return AllocatorHasDefaultObjectConstruct<Alloc, Value, Value>::value &&
         AllocatorHasDefaultObjectDestroy<Alloc, Value>::value &&
-        std::is_trivially_copyable<Value>::value;
+        is_trivially_copyable<Value>::value;
   }
 
  public:
@@ -1248,7 +1231,7 @@ class VectorContainerPolicy : public BasePolicy<
         assume(dst != nullptr);
         AllocTraits::construct(a, dst, Super::moveValue(*src));
         if (kIsMap) {
-          AllocTraits::destroy(a, std::launder(src));
+          AllocTraits::destroy(a, launder(src));
         } else {
           AllocTraits::destroy(a, src);
         }
@@ -1442,8 +1425,7 @@ class VectorContainerPolicy : public BasePolicy<
   // Iterator stuff
 
   Iter linearBegin(std::size_t size) const {
-    return size > 0 ? Iter{values_ + size - 1, values_}
-                    : Iter{nullptr, nullptr};
+    return Iter{(size > 0 ? values_ + size - 1 : nullptr), values_};
   }
 
   Iter linearEnd() const { return Iter{nullptr, nullptr}; }

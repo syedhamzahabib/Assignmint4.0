@@ -1,6 +1,8 @@
-platform :ios, '15.1'
+platform :ios, '16.0'
 
 require_relative '../node_modules/react-native/scripts/react_native_pods'
+
+use_modular_headers!
 
 target 'Assignmint' do
   config = use_native_modules!
@@ -8,9 +10,25 @@ target 'Assignmint' do
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => true,
-    :fabric_enabled => false
+    :fabric_enabled => false,
+    :new_arch_enabled => false
   )
 
+  # React Native Firebase - Start with just Auth
+  pod 'RNFBApp', :path => '../node_modules/@react-native-firebase/app'
+  pod 'RNFBAuth', :path => '../node_modules/@react-native-firebase/auth'
+  # Temporarily disable Firestore and Messaging due to pod issues
+  # pod 'RNFBFirestore', :path => '../node_modules/@react-native-firebase/firestore'
+  # pod 'RNFBMessaging', :path => '../node_modules/@react-native-firebase/messaging'
+  # pod 'RNFBStorage', :path => '../node_modules/@react-native-firebase/storage'
+  
+  # Stripe React Native
+  pod 'stripe-react-native', :path => '../node_modules/@stripe/stripe-react-native'
+  
+  # Google Sign-In - Temporarily disabled due to dependency conflicts
+  pod 'GoogleSignIn'
+  # pod 'GoogleUtilities'
+  
   # Temporarily disable Flipper to reduce header/link issues
   # use_flipper!()
 
@@ -19,7 +37,89 @@ target 'Assignmint' do
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        
+        # Basic build settings for all targets
+        cfg.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        
+        # Fix RCT-Folly compilation issues with newer Xcode versions
+        if t.name == 'RCT-Folly'
+          cfg.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+          cfg.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+          cfg.build_settings['GCC_C_LANGUAGE_STANDARD'] = 'c11'
+          cfg.build_settings['WARNING_CFLAGS'] = '-w'
+          cfg.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+          cfg.build_settings['CLANG_WARN_STRICT_PROTOTYPES'] = 'NO'
+          cfg.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
+          cfg.build_settings['GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS'] = 'NO'
+          cfg.build_settings['GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS'] = 'NO'
+          cfg.build_settings['GCC_WARN_ABOUT_MISSING_PROTOTYPES'] = 'NO'
+          cfg.build_settings['GCC_WARN_ABOUT_RETURN_TYPE'] = 'NO'
+          cfg.build_settings['GCC_WARN_CHECK_SWITCH_STATEMENTS'] = 'NO'
+          cfg.build_settings['GCC_WARN_UNINITIALIZED_AUTOS'] = 'NO'
+          cfg.build_settings['GCC_WARN_UNUSED_FUNCTION'] = 'NO'
+          cfg.build_settings['GCC_WARN_UNUSED_VARIABLE'] = 'NO'
+          cfg.build_settings['CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS'] = 'NO'
+          cfg.build_settings['CLANG_WARN_DIRECT_OBJC_ISA_USAGE'] = 'NO'
+          cfg.build_settings['CLANG_WARN_OBJC_ROOT_CLASS'] = 'NO'
+        end
       end
     end
+    
+    # Fix RCT-Folly clockid_t redefinition issue on Apple platforms
+    folly_header_path = File.join(installer.sandbox.root, 'RCT-Folly', 'folly', 'portability', 'Time.h')
+    headers_private_path = File.join(installer.sandbox.root, 'Headers', 'Private', 'RCT-Folly', 'folly', 'portability', 'Time.h')
+    
+    [folly_header_path, headers_private_path].each do |path|
+      if File.exist?(path)
+        puts "Patching RCT-Folly Time.h header: #{path}"
+        text = File.read(path)
+        # Replace the problematic guard with a safer one that avoids redefining on Apple platforms
+        text.gsub!(/#if !defined\(clockid_t\) && !defined\(__clockid_t_defined\) && !defined\(_CLOCKID_T\)/, 
+                   "#if !defined(__clockid_t_defined) && !defined(_CLOCKID_T) && !defined(__APPLE__)")
+        File.write(path, text)
+        puts "RCT-Folly header patched successfully"
+      end
+    end
+    
+    # Fix missing module map files for gRPC and BoringSSL
+    puts "Creating missing module map files..."
+    
+    # Create openssl_grpc directory and BoringSSL-GRPC.modulemap
+    openssl_grpc_dir = File.join(installer.sandbox.root, 'Headers', 'Private', 'openssl_grpc')
+    FileUtils.mkdir_p(openssl_grpc_dir)
+    boring_ssl_modulemap = File.join(openssl_grpc_dir, 'BoringSSL-GRPC.modulemap')
+    source_boring_ssl = File.join(installer.sandbox.root, 'BoringSSL-GRPC', 'src', 'include', 'openssl', 'BoringSSL.modulemap')
+    if File.exist?(source_boring_ssl)
+      FileUtils.cp(source_boring_ssl, boring_ssl_modulemap)
+      puts "Created BoringSSL-GRPC.modulemap"
+    end
+    
+    # Create grpc directory and gRPC-Core.modulemap
+    grpc_dir = File.join(installer.sandbox.root, 'Headers', 'Private', 'grpc')
+    FileUtils.mkdir_p(grpc_dir)
+    grpc_modulemap = File.join(grpc_dir, 'gRPC-Core.modulemap')
+    source_grpc = File.join(installer.sandbox.root, 'Target Support Files', 'gRPC-Core', 'gRPC-Core.modulemap')
+    if File.exist?(source_grpc) && !File.exist?(grpc_modulemap)
+      FileUtils.cp(source_grpc, grpc_modulemap)
+      puts "Created gRPC-Core.modulemap"
+    end
+    
+    # Fix BoringSSL-GRPC unsupported -G flag issue
+    puts "Fixing BoringSSL-GRPC unsupported -G flag..."
+    installer.pods_project.targets.each do |target|
+      if target.name == 'BoringSSL-GRPC'
+        target.build_configurations.each do |config|
+          # Remove problematic flags
+          config.build_settings['OTHER_CFLAGS'] = (config.build_settings['OTHER_CFLAGS'] || []).reject { |flag| flag == '-G' || flag.include?('GCC_WARN_INHIBIT_ALL_WARNINGS') }
+          config.build_settings['OTHER_CPLUSPLUSFLAGS'] = (config.build_settings['OTHER_CPLUSPLUSFLAGS'] || []).reject { |flag| flag == '-G' || flag.include?('GCC_WARN_INHIBIT_ALL_WARNINGS') }
+          
+          # Remove specific warning flags that might cause issues
+          config.build_settings.delete('GCC_WARN_INHIBIT_ALL_WARNINGS')
+          config.build_settings['WARNING_CFLAGS'] = '-w'
+        end
+        puts "Removed -G flag and warning flags from BoringSSL-GRPC build settings"
+      end
+    end
+    
   end
 end

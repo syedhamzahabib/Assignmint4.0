@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,8 +40,6 @@ namespace {
 ////////////////////////////////////////////////////
 // native implementation using the futex() syscall
 
-// The native implementation of futex wake must be async-signal-safe.
-
 #ifdef __linux__
 
 /// Certain toolchains (like Android's) don't include the full futex API in
@@ -61,7 +59,7 @@ namespace {
 #endif
 
 int nativeFutexWake(const void* addr, int count, uint32_t wakeMask) {
-  const auto rv = syscall(
+  int rv = syscall(
       __NR_futex,
       addr, /* addr1 */
       FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, /* op */
@@ -123,7 +121,7 @@ FutexResult nativeFutexWaitImpl(
 
   // Unlike FUTEX_WAIT, FUTEX_WAIT_BITSET requires an absolute timeout
   // value - http://locklessinc.com/articles/futex_cheat_sheet/
-  const auto rv = syscall(
+  int rv = syscall(
       __NR_futex,
       addr, /* addr1 */
       op, /* op */
@@ -162,8 +160,6 @@ FutexResult nativeFutexWaitImpl(
 
 ///////////////////////////////////////////////////////
 // compatibility implementation using standard C++ API
-
-// This implementation may be non-async-signal-safe.
 
 using Lot = ParkingLot<uint32_t>;
 Lot parkingLot;

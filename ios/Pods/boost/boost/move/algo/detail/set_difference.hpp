@@ -15,12 +15,8 @@
 #include <boost/move/iterator.hpp>
 #include <boost/move/utility_core.hpp>
 
-#if defined(BOOST_CLANG) || (defined(BOOST_GCC) && (BOOST_GCC >= 40600))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#endif
-
 namespace boost {
+
 namespace move_detail{
 
 template<class InputIt, class OutputIt>
@@ -203,9 +199,7 @@ ForwardOutputIt1 inplace_set_unique_difference
    return first1;
 }
 
-#if defined(BOOST_CLANG) || (defined(BOOST_GCC) && (BOOST_GCC >= 40600))
-#pragma GCC diagnostic pop
-#endif
+
 
 }  //namespace movelib {
 }  //namespace boost {

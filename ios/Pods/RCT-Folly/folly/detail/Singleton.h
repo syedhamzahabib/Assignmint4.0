@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,11 +23,22 @@
 namespace folly {
 namespace detail {
 
-struct FOLLY_EXPORT DefaultTag {};
+struct DefaultTag {};
 
 template <typename T>
 struct DefaultMake {
-  T operator()() const { return T(); }
+  struct Heap {
+    std::unique_ptr<T> ptr{std::make_unique<T>()};
+    /* implicit */ operator T&() { return *ptr; }
+  };
+
+  using is_returnable = StrictDisjunction<
+      bool_constant<__cplusplus >= 201703ULL>,
+      std::is_copy_constructible<T>,
+      std::is_move_constructible<T>>;
+  using type = std::conditional_t<is_returnable::value, T, Heap>;
+
+  type operator()() const { return type(); }
 };
 
 } // namespace detail

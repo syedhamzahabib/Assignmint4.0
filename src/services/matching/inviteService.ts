@@ -1,5 +1,4 @@
 // src/services/matching/inviteService.ts - Service for managing task invites to experts
-import { collection, query, where, getDocs, getDoc, addDoc, writeBatch, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Task, ExpertUser, Invite } from '../../types';
 import { getEligibleExperts, rankExperts } from '../../utils/matching/score';

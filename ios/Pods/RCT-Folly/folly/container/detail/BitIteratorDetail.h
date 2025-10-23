@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,6 @@
 #include <type_traits>
 
 #include <boost/iterator/iterator_adaptor.hpp>
-
-#include <folly/portability/SysTypes.h>
 
 namespace folly {
 

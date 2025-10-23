@@ -12,37 +12,62 @@ import {
 } from 'react-native';
 import { COLORS, FONTS, SPACING } from '../constants';
 import Icon, { Icons } from '../components/common/Icon';
-import API from '../lib/api';
-import session from '../lib/session';
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  status: 'ACTIVE' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  price: string;
-  remainingTime: string;
-  applicants: number;
-  action: 'View' | 'Edit' | 'Cancel' | 'Review' | 'Message';
-}
+import { firestoreService } from '../services/firestoreService';
+import { useAuth } from '../state/AuthProvider';
+import { Task } from '../types/firestore';
 
 const MyTasksScreen: React.FC = () => {
+  const { user } = useAuth();
   const [activeFilter, setActiveFilter] = useState('All');
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadMyTasks = async () => {
+    if (!user) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
-      const response = await API.getMyTasks();
-      console.log('📱 MyTasks API response:', response);
-      setTasks(response.tasks || []);
+      
+      // Get tasks created by user (as requester)
+      let createdTasks: Task[] = [];
+      try {
+        createdTasks = await firestoreService.getTasks({
+          createdBy: user.uid,
+          limit: 50,
+        });
+      } catch (error) {
+        console.warn('⚠️ Failed to load created tasks:', error);
+      }
+      
+      // Get tasks completed by user (as expert)
+      let completedTasks: Task[] = [];
+      try {
+        completedTasks = await firestoreService.getTasks({
+          completedBy: user.uid,
+          limit: 50,
+        });
+      } catch (error) {
+        console.warn('⚠️ Failed to load completed tasks:', error);
+      }
+      
+      // Combine and deduplicate tasks
+      const allTasks = [...createdTasks, ...completedTasks];
+      const uniqueTasks = allTasks.filter((task, index, self) => 
+        index === self.findIndex(t => t.id === task.id)
+      );
+      
+      console.log('📱 MyTasks loaded:', uniqueTasks.length);
+      setTasks(uniqueTasks);
     } catch (error: any) {
       console.error('❌ Error loading my tasks:', error);
       setError(error?.message || 'Failed to load tasks');
+      setTasks([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -50,8 +75,12 @@ const MyTasksScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    loadMyTasks();
-  }, []);
+    if (user) {
+      loadMyTasks();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -111,15 +140,28 @@ const MyTasksScreen: React.FC = () => {
       timeRemaining = `${hours}h`;
     }
 
+    // Check if task has auto-assigned expert
+    const hasAssignedExpert = task.assignedExpert && task.assignedExpertName;
+    const isAutoMatched = task.autoMatch && task.matchingType === 'auto';
+
     return (
       <View style={styles.taskCard}>
         <View style={styles.taskHeader}>
           <View style={styles.taskMeta}>
             <Text style={styles.taskDate}>Posted {new Date(task.createdAt).toLocaleDateString()}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
-              <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
-                {task.status.replace('_', ' ')}
-              </Text>
+            <View style={styles.statusContainer}>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(task.status) + '20' }]}>
+                <Text style={[styles.statusText, { color: getStatusColor(task.status) }]}>
+                  {task.status.replace('_', ' ')}
+                </Text>
+              </View>
+              {isAutoMatched && (
+                <View style={[styles.autoMatchBadge, { backgroundColor: COLORS.success + '20' }]}>
+                  <Text style={[styles.autoMatchText, { color: COLORS.success }]}>
+                    🤖 Auto
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
           <Text style={styles.taskPrice}>${task.price}</Text>
@@ -127,6 +169,20 @@ const MyTasksScreen: React.FC = () => {
 
         <Text style={styles.taskTitle}>{task.title}</Text>
         <Text style={styles.taskDescription}>{task.description}</Text>
+
+        {/* Show assigned expert if auto-matched */}
+        {hasAssignedExpert && (
+          <View style={styles.assignedExpertContainer}>
+            <View style={styles.assignedExpertInfo}>
+              <Icon name={Icons.user} size={16} color={COLORS.success} />
+              <Text style={styles.assignedExpertLabel}>Assigned Expert:</Text>
+              <Text style={styles.assignedExpertName}>{task.assignedExpertName}</Text>
+            </View>
+            <View style={styles.assignedExpertBadge}>
+              <Text style={styles.assignedExpertBadgeText}>✓ Assigned</Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.taskFooter}>
           <View style={styles.taskInfo}>
@@ -138,7 +194,9 @@ const MyTasksScreen: React.FC = () => {
             </View>
             <View style={styles.applicantsInfo}>
               <Icon name={Icons.users} size={16} color={COLORS.textSecondary} />
-              <Text style={styles.applicantsText}>0 applicants</Text>
+              <Text style={styles.applicantsText}>
+                {hasAssignedExpert ? '1 expert assigned' : `${task.applicants?.length || 0} applicants`}
+              </Text>
             </View>
           </View>
 
@@ -146,7 +204,9 @@ const MyTasksScreen: React.FC = () => {
             style={[styles.actionButton, getActionButtonStyle('View')]}
             onPress={() => console.log(`View task: ${task.id}`)}
           >
-            <Text style={styles.actionButtonText}>View</Text>
+            <Text style={styles.actionButtonText}>
+              {hasAssignedExpert ? 'Chat' : 'View'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -563,6 +623,57 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: FONTS.sizes.md,
     fontWeight: FONTS.weights.bold,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  autoMatchBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 12,
+  },
+  autoMatchText: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: FONTS.weights.bold,
+    textTransform: 'uppercase',
+  },
+  assignedExpertContainer: {
+    backgroundColor: COLORS.success + '10',
+    borderRadius: 12,
+    padding: SPACING.md,
+    marginVertical: SPACING.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.success,
+  },
+  assignedExpertInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  assignedExpertLabel: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.xs,
+    marginRight: SPACING.xs,
+  },
+  assignedExpertName: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.success,
+  },
+  assignedExpertBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.success,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 12,
+  },
+  assignedExpertBadgeText: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.white,
   },
 });
 

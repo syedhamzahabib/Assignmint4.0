@@ -20,8 +20,46 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>REVERSED_CLIENT_ID</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.772572800538-v75af2ikfnkldobrpr4tlr6h76kbsmpp</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>assignmint</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>assignmint</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>Config</key>
+	<dict>
+		<key>API_BASE_URL</key>
+		<string>http://localhost:3000</string>
+		<key>FIREBASE_API_KEY</key>
+		<string>AIzaSyC7zjDmADwt2dtakT0ZQJZmw4gk-49UpcU</string>
+		<key>FIREBASE_APP_ID</key>
+		<string>1:772572800538:ios:fdc940b189ae56b32013a3</string>
+		<key>FIREBASE_AUTH_DOMAIN</key>
+		<string>assignimt.firebaseapp.com</string>
+		<key>FIREBASE_MESSAGING_SENDER_ID</key>
+		<string>772572800538</string>
+		<key>FIREBASE_PROJECT_ID</key>
+		<string>assignimt</string>
+		<key>FIREBASE_STORAGE_BUCKET</key>
+		<string>assignimt.appspot.com</string>
+		<key>GOOGLE_WEB_CLIENT_ID</key>
+		<string>772572800538-v75af2ikfnkldobrpr4tlr6h76kbsmpp.apps.googleusercontent.com</string>
+	</dict>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -30,7 +68,7 @@
 		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>localhost</key>
+			<key>New Exception Domain</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
@@ -39,8 +77,25 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take photos for task attachments and profile pictures.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string/>
+	<string>This app needs location access to show nearby tasks and match users based on proximity.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to record audio notes for tasks.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to select images for task attachments and profile pictures.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Ionicons.ttf</string>
+		<string>MaterialIcons.ttf</string>
+		<string>FontAwesome.ttf</string>
+		<string>Feather.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -55,29 +110,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>UIAppFonts</key>
+	<key>LSApplicationQueriesSchemes</key>
 	<array>
-		<string>Ionicons.ttf</string>
-		<string>MaterialIcons.ttf</string>
-		<string>FontAwesome.ttf</string>
-		<string>Feather.ttf</string>
+		<string>google</string>
+		<string>com.googleusercontent.apps.772572800538-v75af2ikfnkldobrpr4tlr6h76kbsmpp</string>
 	</array>
-	<key>Config</key>
-	<dict>
-		<key>API_BASE_URL</key>
-		<string>http://localhost:3000</string>
-		<key>FIREBASE_API_KEY</key>
-		<string>AIzaSyC7zjDmADwt2dtakT0ZQJZmw4gk-49UpcU</string>
-		<key>FIREBASE_APP_ID</key>
-		<string>1:772572800538:ios:fdc940b189ae56b32013a3</string>
-		<key>FIREBASE_PROJECT_ID</key>
-		<string>assignimt</string>
-		<key>FIREBASE_AUTH_DOMAIN</key>
-		<string>assignimt.firebaseapp.com</string>
-		<key>FIREBASE_MESSAGING_SENDER_ID</key>
-		<string>772572800538</string>
-		<key>FIREBASE_STORAGE_BUCKET</key>
-		<string>assignimt.appspot.com</string>
-	</dict>
 </dict>
 </plist>

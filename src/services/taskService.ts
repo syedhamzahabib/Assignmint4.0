@@ -1,19 +1,4 @@
-// src/services/taskService.ts - Task management with Firebase Web SDK
-import { 
-  collection, 
-  addDoc, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit,
-  updateDoc, 
-  serverTimestamp,
-  onSnapshot,
-  Timestamp
-} from 'firebase/firestore';
+// src/services/taskService.ts - Task management with React Native Firebase
 import { db } from '../lib/firebase';
 import { Task } from '../types';
 
@@ -26,6 +11,8 @@ export interface CreateTaskData {
   deadlineTime?: string;
   urgency: 'low' | 'medium' | 'high';
   matchingPreference: 'auto' | 'manual';
+  autoMatch?: boolean; // New field for auto-matching
+  matchingType?: 'manual' | 'auto'; // New field for matching type
   isForStudent?: boolean;
   ownerId: string;
   ownerName: string;
@@ -79,6 +66,8 @@ class TaskService {
         
         // Matching system fields
         matchingPreference: taskData.matchingPreference,
+        matchingType: taskData.matchingType || taskData.matchingPreference,
+        autoMatch: taskData.autoMatch || (taskData.matchingPreference === 'auto'),
         reservedBy: null,
         reservedUntil: null,
         matching: {

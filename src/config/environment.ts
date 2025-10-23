@@ -15,6 +15,7 @@ interface EnvironmentConfig {
   // Feature flags
   ENABLE_AI_FEATURES: boolean;
   ENABLE_PUSH_NOTIFICATIONS: boolean;
+  STRIPE_ENABLED: boolean;
   
   // Development settings
   ENABLE_LOGGING: boolean;
@@ -29,6 +30,7 @@ const defaultConfig: EnvironmentConfig = {
   FIREBASE_API_KEY: '',
   ENABLE_AI_FEATURES: true,
   ENABLE_PUSH_NOTIFICATIONS: true,
+  STRIPE_ENABLED: true, // Enable Stripe by default when package is installed
   ENABLE_LOGGING: __DEV__,
   ENABLE_ANALYTICS: !__DEV__,
 };
@@ -94,6 +96,7 @@ export const {
   FIREBASE_API_KEY,
   ENABLE_AI_FEATURES,
   ENABLE_PUSH_NOTIFICATIONS,
+  STRIPE_ENABLED,
   ENABLE_LOGGING,
   ENABLE_ANALYTICS,
 } = config;

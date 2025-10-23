@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,12 @@
 #include <folly/Traits.h>
 #include <folly/detail/TypeList.h>
 #include <folly/lang/Assume.h>
+
+#if !defined(__cpp_inline_variables)
+#define FOLLY_INLINE_CONSTEXPR constexpr
+#else
+#define FOLLY_INLINE_CONSTEXPR inline constexpr
+#endif
 
 #include <folly/PolyException.h>
 #include <folly/detail/PolyDetail.h>
@@ -111,11 +117,64 @@ using PolySelf = _t<PolySelf_<Node, Tfx, Access>>;
  */
 using PolyDecay = detail::MetaQuote<std::decay_t>;
 
+#if !FOLLY_POLY_NTTP_AUTO
+
+/**
+ * Use `FOLLY_POLY_MEMBERS(MEMS...)` on pre-C++17 compilers to specify a
+ * comma-separated list of member function bindings.
+ *
+ * For example:
+ *
+ *     struct IFooBar {
+ *       template <class Base>
+ *       struct Interface : Base {
+ *         int foo() const { return folly::poly_call<0>(*this); }
+ *         void bar() { folly::poly_call<1>(*this); }
+ *       };
+ *       template <class T>
+ *       using Members = FOLLY_POLY_MEMBERS(&T::foo, &T::bar);
+ *     };
+ */
+#define FOLLY_POLY_MEMBERS(...)                     \
+  typename decltype(::folly::detail::deduceMembers( \
+      __VA_ARGS__))::template Members<__VA_ARGS__>
+
+/**
+ * Use `FOLLY_POLY_MEMBER(SIG, MEM)` on pre-C++17 compilers to specify a member
+ * function binding that needs to be disambiguated because of overloads. `SIG`
+ * should the (possibly const-qualified) signature of the `MEM` member function
+ * pointer.
+ *
+ * For example:
+ *
+ *     struct IFoo {
+ *       template <class Base> struct Interface : Base {
+ *         int foo() const { return folly::poly_call<0>(*this); }
+ *       };
+ *       template <class T> using Members = FOLLY_POLY_MEMBERS(
+ *         // This works even if T::foo is overloaded:
+ *         FOLLY_POLY_MEMBER(int()const, &T::foo)
+ *       );
+ *     };
+ */
+#define FOLLY_POLY_MEMBER(SIG, MEM) \
+  ::folly::detail::MemberDef<       \
+      ::folly::detail::Member<decltype(::folly::sig<SIG>(MEM)), MEM>>::value
+
+/**
+ * A list of member function bindings.
+ */
+template <class... Ts>
+using PolyMembers = detail::TypeList<Ts...>;
+
+#else
 #define FOLLY_POLY_MEMBER(SIG, MEM) ::folly::sig<SIG>(MEM)
 #define FOLLY_POLY_MEMBERS(...) ::folly::PolyMembers<__VA_ARGS__>
 
 template <auto... Ps>
 struct PolyMembers {};
+
+#endif
 
 /**
  * Used in the definition of a `Poly` interface to say that the current
@@ -217,8 +276,7 @@ template <
     typename... As,
     std::enable_if_t<detail::IsPoly<Poly>::value, int> = 0>
 auto poly_call(Poly&& _this, As&&... as) -> decltype(poly_call<N, I>(
-                                             static_cast<Poly&&>(_this).get(),
-                                             static_cast<As&&>(as)...)) {
+    static_cast<Poly&&>(_this).get(), static_cast<As&&>(as)...)) {
   return poly_call<N, I>(
       static_cast<Poly&&>(_this).get(), static_cast<As&&>(as)...);
 }
@@ -239,7 +297,7 @@ template <std::size_t N, class I, typename... As>
  * \tparam T The (unqualified) type to which to cast the `Poly` object.
  * \tparam Poly The type of the `Poly` object.
  * \param that The `Poly` object to be cast.
- * \return A reference to the `T` object stored in or referred to by `that`.
+ * \return A reference to the `T` object stored in or refered to by `that`.
  * \throw BadPolyAccess if `that` is empty.
  * \throw BadPolyCast if `that` does not store or refer to an object of type
  *        `T`.
@@ -487,7 +545,7 @@ struct PolyVal : PolyImpl<I> {
 ////////////////////////////////////////////////////////////////////////////////
 /**
  * The implementation of `Poly` for when the interface type is
- * reference-qualified, like `Poly<SemiRegular &>`.
+ * reference-quelified, like `Poly<SemuRegular &>`.
  */
 template <class I>
 struct PolyRef : private PolyImpl<I> {
@@ -648,7 +706,7 @@ using PolyValOrRef = If<std::is_reference<I>::value, PolyRef<I>, PolyVal<I>>;
  * \li A *mapping* from a concrete type to a set of member function bindings.
  *
  * Below is a (heavily commented) example of a simple implementation of a
- * `std::function`-like polymorphic wrapper. Its interface has only a single
+ * `std::function`-like polymorphic wrapper. Its interface has only a simgle
  * member function: `operator()`
  *
  *     // An interface for a callable object of a particular signature, Fun
@@ -1088,8 +1146,10 @@ void swap(Poly<I>& left, Poly<I>& right) noexcept {
  * The above is permitted
  */
 template <class Sig>
-inline constexpr detail::Sig<Sig> const sig = {};
+FOLLY_INLINE_CONSTEXPR detail::Sig<Sig> const sig = {};
 
 } // namespace folly
 
 #include <folly/Poly-inl.h>
+
+#undef FOLLY_INLINE_CONSTEXPR

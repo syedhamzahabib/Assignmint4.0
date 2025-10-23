@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,9 @@
 #include <folly/Portability.h>
 #include <folly/synchronization/SmallLocks.h>
 
-#if FOLLY_X64 || FOLLY_PPC64 || FOLLY_AARCH64
-#define FOLLY_HAS_PACKED_SYNC_PTR 1
-#else
-#define FOLLY_HAS_PACKED_SYNC_PTR 0
+#if !FOLLY_X64 && !FOLLY_PPC64 && !FOLLY_AARCH64
+#error "PackedSyncPtr is x64, ppc64 or aarch64 specific code."
 #endif
-
-#if FOLLY_HAS_PACKED_SYNC_PTR
 
 /*
  * An 8-byte pointer with an integrated spin lock and 15-bit integer
@@ -56,6 +52,9 @@
  * TODO(jdelong): should we use the low order bit for the lock, so we
  * get a whole 16-bits for our integer?  (There's also 2 more bits
  * down there if the pointer comes from malloc.)
+ *
+ * @author Spencer Ahrens <sahrens@fb.com>
+ * @author Jordan DeLong <delong.j@fb.com>
  */
 
 namespace folly {
@@ -78,7 +77,7 @@ class PackedSyncPtr {
   void init(T* initialPtr = nullptr, uint16_t initialExtra = 0) {
     auto intPtr = reinterpret_cast<uintptr_t>(initialPtr);
     CHECK(!(intPtr >> 48));
-    data_.init(intPtr << 16);
+    data_.init(intPtr);
     setExtra(initialExtra);
   }
 
@@ -89,8 +88,9 @@ class PackedSyncPtr {
    */
   void set(T* t) {
     auto intPtr = reinterpret_cast<uintptr_t>(t);
+    auto shiftedExtra = uintptr_t(extra()) << 48;
     CHECK(!(intPtr >> 48));
-    data_.setData((intPtr << 16) | uintptr_t(extra()));
+    data_.setData(intPtr | shiftedExtra);
   }
 
   /*
@@ -100,7 +100,9 @@ class PackedSyncPtr {
    * normal types of behavior you'll get on x64 from reading a pointer
    * without locking.
    */
-  T* get() const { return reinterpret_cast<T*>(data_.getData() >> 16); }
+  T* get() const {
+    return reinterpret_cast<T*>(data_.getData() & (-1ull >> 16));
+  }
   T* operator->() const { return get(); }
   reference operator*() const { return *get(); }
   reference operator[](std::ptrdiff_t i) const { return get()[i]; }
@@ -116,7 +118,7 @@ class PackedSyncPtr {
    *
    * It is ok to call this without holding the lock.
    */
-  uint16_t extra() const { return data_.getData() & 0xffff; }
+  uint16_t extra() const { return data_.getData() >> 48; }
 
   /*
    * Don't try to put anything into this that has the high bit set:
@@ -126,17 +128,16 @@ class PackedSyncPtr {
    */
   void setExtra(uint16_t extra) {
     CHECK(!(extra & 0x8000));
-    auto ptr = data_.getData();
-    data_.setData(uintptr_t(extra) | (ptr & (-1ull << 16)));
+    auto ptr = data_.getData() & (-1ull >> 16);
+    data_.setData((uintptr_t(extra) << 48) | ptr);
   }
 
  private:
-  PicoSpinLock<uintptr_t, 15> data_;
-};
+  PicoSpinLock<uintptr_t> data_;
+} FOLLY_PACK_ATTR;
 
 static_assert(
-    std::is_standard_layout<PackedSyncPtr<void>>::value &&
-        std::is_trivial<PackedSyncPtr<void>>::value,
+    std::is_pod<PackedSyncPtr<void>>::value,
     "PackedSyncPtr must be kept a POD type.");
 static_assert(
     sizeof(PackedSyncPtr<void>) == 8,
@@ -148,7 +149,4 @@ std::ostream& operator<<(std::ostream& os, const PackedSyncPtr<T>& ptr) {
   os << "PackedSyncPtr(" << ptr.get() << ", " << ptr.extra() << ")";
   return os;
 }
-
 } // namespace folly
-
-#endif

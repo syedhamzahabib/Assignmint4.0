@@ -8,14 +8,21 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
+import { useStripe } from '@stripe/stripe-react-native';
 import Icon, { Icons } from '../components/common/Icon';
 import { COLORS } from '../constants';
 import API from '../lib/api';
+import { stripeService } from '../services/stripeService';
+import { useAuth } from '../state/AuthProvider';
+import { STRIPE_ENABLED } from '../config/environment';
 
 const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
   const { taskId } = route.params || {};
+  const { user } = useAuth();
+  const { presentPaymentSheet, initPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(false);
   const [task, setTask] = useState<any>(null);
+  const [isPaying, setIsPaying] = useState(false);
 
   // Mock task data
   const mockTask = {
@@ -105,6 +112,91 @@ const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
 
   const handleShare = () => {
     Alert.alert('Share', 'Sharing feature coming soon!');
+  };
+
+  const handlePayExpert = async () => {
+    try {
+      console.log('💳 Paying expert for task:', task?.id);
+      setIsPaying(true);
+      
+      if (!user) {
+        Alert.alert('Error', 'Please log in to make payments.');
+        return;
+      }
+
+      if (!task) {
+        Alert.alert('Error', 'Task information not available.');
+        return;
+      }
+
+      // Check if Stripe is enabled and properly configured
+      if (!STRIPE_ENABLED) {
+        Alert.alert('Coming Soon', 'Payment integration is being set up. Please check back later.');
+        return;
+      }
+
+      if (!initPaymentSheet || !presentPaymentSheet) {
+        Alert.alert('Error', 'Payment system is not properly configured. Please try again later.');
+        return;
+      }
+
+      // Create PaymentIntent for task payment
+      const paymentIntent = await stripeService.createPaymentIntent({
+        amount: task.budget,
+        currency: 'usd',
+        metadata: {
+          type: 'task_payment',
+          taskId: task.id,
+          userId: user.uid,
+          expertId: task.expertId || 'unknown',
+        },
+      });
+
+      // Initialize payment sheet
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: 'AssignMint',
+        paymentIntentClientSecret: paymentIntent.client_secret,
+        allowsDelayedPaymentMethods: true,
+      });
+
+      if (initError) {
+        console.error('❌ Payment sheet init error:', initError);
+        Alert.alert('Error', 'Failed to initialize payment. Please try again.');
+        return;
+      }
+
+      // Present payment sheet
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        console.error('❌ Payment sheet present error:', presentError);
+        if (presentError.code !== 'Canceled') {
+          Alert.alert('Error', 'Payment failed. Please try again.');
+        }
+        return;
+      }
+
+      // Payment successful
+      Alert.alert(
+        'Payment Successful', 
+        `You've successfully paid $${task.budget} for this task. The expert will receive the payment once the task is completed.`,
+        [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Navigate back or update task status
+              navigation.goBack();
+            }
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('❌ Error processing payment:', error);
+      Alert.alert('Error', 'Failed to process payment. Please try again.');
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   if (loading) {
@@ -252,6 +344,16 @@ const TaskDetailsScreen: React.FC<{ navigation: any; route: any }> = ({ navigati
             onPress={handleAccept}
           >
             <Text style={styles.acceptButtonText}>Accept Task</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.payButton]}
+            onPress={handlePayExpert}
+            disabled={isPaying}
+          >
+            <Text style={styles.payButtonText}>
+              {isPaying ? 'Processing...' : `Pay $${task?.budget || 0}`}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -483,13 +585,16 @@ const styles = StyleSheet.create({
   mainActions: {
     flex: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   actionButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 4,
+    marginHorizontal: 2,
+    marginVertical: 4,
+    minWidth: 100,
   },
   negotiateButton: {
     backgroundColor: COLORS.surface,
@@ -505,6 +610,14 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   acceptButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  payButton: {
+    backgroundColor: COLORS.success,
+  },
+  payButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,

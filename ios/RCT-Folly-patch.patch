@@ -1,0 +1,20 @@
+--- a/folly/portability/Time.h
++++ b/folly/portability/Time.h
+@@ -46,14 +46,16 @@
+ #define CLOCK_MONOTONIC 1
+ #define CLOCK_PROCESS_CPUTIME_ID 2
+ #define CLOCK_THREAD_CPUTIME_ID 3
++#ifndef clockid_t
+ typedef uint8_t clockid_t;
++#endif
+ #define CLOCK_REALTIME 0
+ #define CLOCK_MONOTONIC 1
+ #define CLOCK_PROCESS_CPUTIME_ID 2
+ #define CLOCK_THREAD_CPUTIME_ID 3
+-typedef uint8_t clockid_t;
++#ifndef clockid_t
++typedef uint8_t clockid_t;
++#endif
+ #endif
+ 
+ #if FOLLY_HAVE_CLOCK_GETTIME

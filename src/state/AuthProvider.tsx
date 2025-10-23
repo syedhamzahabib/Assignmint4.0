@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../lib/firebase';
 
 export type AuthMode = 'auth' | 'guest';
 
 interface AuthContextType {
-  user: User | null;
+  user: FirebaseAuthTypes.User | null;
   loading: boolean;
   mode: AuthMode | null;
   logout: () => Promise<void>;
@@ -32,42 +32,60 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [pendingRoute, setPendingRoute] = useState<{ routeName: string; params?: any } | null>(null);
 
   useEffect(() => {
     console.log('✓ Setting up auth state listener');
-    
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        setMode('auth');
-        console.log('✓ User authenticated:', firebaseUser.email);
-      } else {
-        // Check if user is in guest mode
-        const guestMode = await AsyncStorage.getItem('guestMode');
-        if (guestMode === 'true') {
-          setMode('guest');
-          console.log('✓ Guest mode active');
-        } else {
-          setMode(null);
-          console.log('✓ No user, no guest mode');
-        }
-        setUser(null);
-      }
-      setLoading(false);
-    });
 
-    return unsubscribe;
+    try {
+      const authInstance = auth();
+      if (!authInstance) {
+        console.warn('⚠️ Firebase Auth not available - falling back to guest mode');
+        setMode('guest');
+        setLoading(false);
+        return;
+      }
+
+      const unsubscribe = authInstance.onAuthStateChanged(async (firebaseUser) => {
+        if (firebaseUser) {
+          setUser(firebaseUser);
+          setMode('auth');
+          console.log('✓ User authenticated:', firebaseUser.email);
+        } else {
+          // Check if user is in guest mode
+          const guestMode = await AsyncStorage.getItem('guestMode');
+          if (guestMode === 'true') {
+            setMode('guest');
+            console.log('✓ Guest mode active');
+          } else {
+            setMode(null);
+            console.log('✓ No user, no guest mode');
+          }
+          setUser(null);
+        }
+        setLoading(false);
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error('❌ Error setting up auth listener:', error);
+      console.warn('⚠️ Firebase Auth not available - falling back to guest mode');
+      setMode('guest');
+      setLoading(false);
+    }
   }, []);
 
   const logout = async () => {
     try {
       if (mode === 'auth' && user) {
-        await signOut(auth);
-        console.log('✓ User logged out');
+        const authInstance = auth();
+        if (authInstance) {
+          await authInstance.signOut();
+          console.log('✓ User logged out');
+        }
       }
       await AsyncStorage.removeItem('guestMode');
       setUser(null);

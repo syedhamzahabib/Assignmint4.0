@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,5 +25,5 @@
   std::cerr
       << "This program will now terminate because a folly::ScopeGuard callback "
          "threw an \nexception.\n";
-  std::rethrow_exception(current_exception());
+  std::rethrow_exception(std::current_exception());
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ class ThreadCachedArena {
 
   void* allocate(size_t size) {
     SysArena* arena = arena_.get();
-    if (FOLLY_UNLIKELY(!arena)) {
+    if (UNLIKELY(!arena)) {
       arena = allocateThreadLocalArena();
     }
 

@@ -12,13 +12,7 @@
 
 #import "RCTAppDelegate.h"
 #import "RCTAppSetupUtils.h"
-#import "RCTArchConfiguratorProtocol.h"
-#import "RCTDefaultReactNativeFactoryDelegate.h"
-#import "RCTDependencyProvider.h"
-#import "RCTJSRuntimeConfiguratorProtocol.h"
-#import "RCTReactNativeFactory.h"
-#import "RCTRootViewFactory.h"
-#import "RCTUIConfiguratorProtocol.h"
+#import "RCTLegacyInteropComponents.h"
 
 FOUNDATION_EXPORT double React_RCTAppDelegateVersionNumber;
 FOUNDATION_EXPORT const unsigned char React_RCTAppDelegateVersionString[];

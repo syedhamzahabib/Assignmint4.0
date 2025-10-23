@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@
  * This class assumes that "time" is an int64_t and doesn't care about time
  * units (seconds, milliseconds, etc).  You call runOnce() / runLoop() using
  * the same time units that you use to specify callbacks.
+ *
+ * @author Tudor Bosman (tudorb@fb.com)
  */
 
 #pragma once

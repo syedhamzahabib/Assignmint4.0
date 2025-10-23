@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,57 +16,38 @@
 
 #include <folly/Unicode.h>
 
-#include <initializer_list>
-
 #include <folly/Conv.h>
 
 namespace folly {
 
-namespace {
-
-template <class F>
-void codePointToUtf8Impl(char32_t cp, F&& f) {
-  // Based on description from http://en.wikipedia.org/wiki/UTF-8.
-
-  if (cp <= 0x7f) {
-    f({
-        static_cast<char>(cp),
-    });
-  } else if (cp <= 0x7FF) {
-    f({
-        static_cast<char>(0xC0 | (cp >> 6)),
-        static_cast<char>(0x80 | (0x3f & cp)),
-    });
-  } else if (cp <= 0xFFFF) {
-    f({
-        static_cast<char>(0xE0 | (cp >> 12)),
-        static_cast<char>(0x80 | (0x3f & (cp >> 6))),
-        static_cast<char>(0x80 | (0x3f & cp)),
-    });
-  } else if (cp <= 0x10FFFF) {
-    f({
-        static_cast<char>(0xF0 | (cp >> 18)),
-        static_cast<char>(0x80 | (0x3f & (cp >> 12))),
-        static_cast<char>(0x80 | (0x3f & (cp >> 6))),
-        static_cast<char>(0x80 | (0x3f & cp)),
-    });
-  }
-}
-
-} // namespace
+//////////////////////////////////////////////////////////////////////
 
 std::string codePointToUtf8(char32_t cp) {
   std::string result;
-  codePointToUtf8Impl(cp, [&](std::initializer_list<char> data) {
-    result.assign(data.begin(), data.end());
-  });
-  return result;
-}
 
-void appendCodePointToUtf8(char32_t cp, std::string& out) {
-  codePointToUtf8Impl(cp, [&](std::initializer_list<char> data) {
-    out.append(data.begin(), data.end());
-  });
+  // Based on description from http://en.wikipedia.org/wiki/UTF-8.
+
+  if (cp <= 0x7f) {
+    result.resize(1);
+    result[0] = static_cast<char>(cp);
+  } else if (cp <= 0x7FF) {
+    result.resize(2);
+    result[1] = static_cast<char>(0x80 | (0x3f & cp));
+    result[0] = static_cast<char>(0xC0 | (cp >> 6));
+  } else if (cp <= 0xFFFF) {
+    result.resize(3);
+    result[2] = static_cast<char>(0x80 | (0x3f & cp));
+    result[1] = (0x80 | static_cast<char>((0x3f & (cp >> 6))));
+    result[0] = (0xE0 | static_cast<char>(cp >> 12));
+  } else if (cp <= 0x10FFFF) {
+    result.resize(4);
+    result[3] = static_cast<char>(0x80 | (0x3f & cp));
+    result[2] = static_cast<char>(0x80 | (0x3f & (cp >> 6)));
+    result[1] = static_cast<char>(0x80 | (0x3f & (cp >> 12)));
+    result[0] = static_cast<char>(0xF0 | (cp >> 18));
+  }
+
+  return result;
 }
 
 char32_t utf8ToCodePoint(
@@ -87,7 +68,7 @@ char32_t utf8ToCodePoint(
   *   but Unicode defines 0x10FFFF to be the largest code point
   * - the 5B & 6B encodings will all encode values larger than 0x1FFFFF
   *   (so larger than the largest code point value 0x10FFFF) so they form invalid
-  *   Unicode code points
+  *   unicode code points
   *
   * On invalid input (invalid encoding or code points larger than 0x10FFFF):
   * - When skipOnError is true, this function will skip the first byte and return
@@ -197,5 +178,7 @@ char32_t utf8ToCodePoint(
   }
   throw std::runtime_error("folly::utf8ToCodePoint encoding length maxed out");
 }
+
+//////////////////////////////////////////////////////////////////////
 
 } // namespace folly

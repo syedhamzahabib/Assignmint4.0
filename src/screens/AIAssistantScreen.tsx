@@ -49,7 +49,8 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  // Use the AI chat hook
+  // Use the AI chat hook with real user ID
+  const { user } = useAuth();
   const {
     messages,
     isTyping,
@@ -65,7 +66,7 @@ const AIAssistantScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     deleteSession,
     clearChat,
     toggleExplanationMode,
-  } = useAIChat('mock-user-id'); // TODO: Replace with actual user ID from auth
+  } = useAIChat(user?.uid || 'guest-user-id');
 
   const scrollViewRef = useRef<ScrollView>(null);
   const aiApiService = new AIApiService();

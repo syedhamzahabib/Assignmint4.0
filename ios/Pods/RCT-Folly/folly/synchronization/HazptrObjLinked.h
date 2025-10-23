@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,11 +86,11 @@ class hazptr_root {
  */
 template <template <typename> class Atom>
 class hazptr_obj_linked : public hazptr_obj<Atom> {
-  using Count = uint64_t;
+  using Count = uint32_t;
 
-  static constexpr Count kRef = Count{1};
-  static constexpr Count kLink = Count{1} << 32;
-  static constexpr Count kRefMask = kLink - Count{1};
+  static constexpr Count kRef = 1u;
+  static constexpr Count kLink = 1u << 16;
+  static constexpr Count kRefMask = kLink - 1u;
   static constexpr Count kLinkMask = ~kRefMask;
 
   Atom<Count> count_{0};

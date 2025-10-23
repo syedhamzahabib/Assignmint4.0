@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ void* Arena<Alloc>::allocateSlow(size_t size) {
     allocSize = sizeof(LargeBlock) + size;
     void* mem = AllocTraits::allocate(alloc(), allocSize);
     auto blk = new (mem) LargeBlock(allocSize);
-    start = align(blk->start());
+    start = blk->start();
     largeBlocks_.push_back(*blk);
   } else {
     // Allocate a normal sized block and carve out size bytes from it
@@ -53,7 +53,7 @@ void* Arena<Alloc>::allocateSlow(size_t size) {
     allocSize = blockGoodAllocSize();
     void* mem = AllocTraits::allocate(alloc(), allocSize);
     auto blk = new (mem) Block();
-    start = align(blk->start());
+    start = blk->start();
     blocks_.push_back(*blk);
     currentBlock_ = blocks_.last();
     ptr_ = start + size;

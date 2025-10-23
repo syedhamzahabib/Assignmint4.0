@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,63 +44,29 @@ template <class T, AtomicIntrusiveLinkedListHook<T> T::*HookMember>
 class AtomicIntrusiveLinkedList {
  public:
   AtomicIntrusiveLinkedList() {}
-
   AtomicIntrusiveLinkedList(const AtomicIntrusiveLinkedList&) = delete;
   AtomicIntrusiveLinkedList& operator=(const AtomicIntrusiveLinkedList&) =
       delete;
-
-  AtomicIntrusiveLinkedList(AtomicIntrusiveLinkedList&& other) noexcept
-      : head_(other.head_.exchange(nullptr, std::memory_order_acq_rel)) {}
-
-  // Absent because would be too error-prone to use correctly because of
-  // the requirement that lists are empty upon destruction.
+  AtomicIntrusiveLinkedList(AtomicIntrusiveLinkedList&& other) noexcept {
+    auto tmp = other.head_.load();
+    other.head_ = head_.load();
+    head_ = tmp;
+  }
   AtomicIntrusiveLinkedList& operator=(
-      AtomicIntrusiveLinkedList&& other) noexcept = delete;
+      AtomicIntrusiveLinkedList&& other) noexcept {
+    auto tmp = other.head_.load();
+    other.head_ = head_.load();
+    head_ = tmp;
 
-  /**
-   * Move the currently held elements to a new list.
-   * The current list becomes empty, but concurrent threads
-   * might still add new elements to it.
-   *
-   * Equivalent to calling a move constructor, but more linter-friendly
-   * in case you still need the old list.
-   */
-  AtomicIntrusiveLinkedList spliceAll() { return std::move(*this); }
-
-  /**
-   * Move-assign the current list to `other`, then reverse-sweep
-   * the old list with the provided callback `func`.
-   *
-   * A safe replacement for the move assignment operator, which is absent
-   * because of the resource leak concerns.
-   */
-  template <typename F>
-  void reverseSweepAndAssign(AtomicIntrusiveLinkedList&& other, F&& func) {
-    auto otherHead = other.head_.exchange(nullptr, std::memory_order_acq_rel);
-    auto head = head_.exchange(otherHead, std::memory_order_acq_rel);
-    unlinkAll(head, std::forward<F>(func));
+    return *this;
   }
 
   /**
-   * Note: The list must be empty on destruction.
+   * Note: list must be empty on destruction.
    */
   ~AtomicIntrusiveLinkedList() { assert(empty()); }
 
-  /**
-   * Returns the current head of the list.
-   *
-   * WARNING: The returned pointer might not be valid if the list
-   * is modified concurrently!
-   */
-  T* unsafeHead() const { return head_.load(std::memory_order_acquire); }
-
-  /**
-   * Returns true if the list is empty.
-   *
-   * WARNING: This method's return value is only valid for a snapshot
-   * of the state, it might become stale as soon as it's returned.
-   */
-  bool empty() const { return unsafeHead() == nullptr; }
+  bool empty() const { return head_.load() == nullptr; }
 
   /**
    * Atomically insert t at the head of the list.
@@ -132,7 +98,7 @@ class AtomicIntrusiveLinkedList {
    */
   template <typename F>
   bool sweepOnce(F&& func) {
-    if (auto head = head_.exchange(nullptr, std::memory_order_acq_rel)) {
+    if (auto head = head_.exchange(nullptr)) {
       auto rhead = reverse(head);
       unlinkAll(rhead, std::forward<F>(func));
       return true;
@@ -168,7 +134,7 @@ class AtomicIntrusiveLinkedList {
   void reverseSweep(F&& func) {
     // We don't loop like sweep() does because the overall order of callbacks
     // would be strand-wise LIFO which is meaningless to callers.
-    auto head = head_.exchange(nullptr, std::memory_order_acq_rel);
+    auto head = head_.exchange(nullptr);
     unlinkAll(head, std::forward<F>(func));
   }
 
@@ -193,7 +159,7 @@ class AtomicIntrusiveLinkedList {
   /* Unlinks all elements in the linked list fragment pointed to by `head',
    * calling func() on every element */
   template <typename F>
-  static void unlinkAll(T* head, F&& func) {
+  void unlinkAll(T* head, F&& func) {
     while (head != nullptr) {
       auto t = head;
       head = next(t);

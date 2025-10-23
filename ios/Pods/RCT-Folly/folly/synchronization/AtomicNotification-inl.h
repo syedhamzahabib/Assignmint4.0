@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,8 @@ void atomic_wait_impl(
 template <template <typename...> class Atom, typename Integer, typename... Args>
 void atomic_wait_impl(const Atom<Integer, Args...>* atomic, Integer old) {
   static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
-  parkingLot.park(atomic, -1, [&] { return atomic->load() == old; }, [] {});
+  parkingLot.park(
+      atomic, -1, [&] { return atomic->load() == old; }, [] {});
 }
 
 template <

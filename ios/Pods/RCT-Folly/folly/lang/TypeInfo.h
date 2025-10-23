@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,7 @@
 #if FOLLY_HAS_RTTI
 #define FOLLY_TYPE_INFO_OF(...) (&typeid(__VA_ARGS__))
 #else
-#define FOLLY_TYPE_INFO_OF(...) \
-  ((sizeof(__VA_ARGS__)), static_cast<std::type_info const*>(nullptr))
+#define FOLLY_TYPE_INFO_OF(...) (static_cast<std::type_info const*>(nullptr))
 #endif
 
 namespace folly {
@@ -40,7 +39,7 @@ namespace folly {
 //
 //  This overload works on the static type of the template parameter.
 template <typename T>
-FOLLY_ERASE constexpr std::type_info const* type_info_of() {
+FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of() {
   return FOLLY_TYPE_INFO_OF(T);
 }
 
@@ -50,8 +49,8 @@ FOLLY_ERASE constexpr std::type_info const* type_info_of() {
 //
 //  This overload works on the dynamic type of the non-template parameter.
 template <typename T>
-FOLLY_ERASE constexpr std::type_info const* type_info_of(
-    [[maybe_unused]] T const& t) {
+FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of(
+    FOLLY_MAYBE_UNUSED T const& t) {
   return FOLLY_TYPE_INFO_OF(t);
 }
 

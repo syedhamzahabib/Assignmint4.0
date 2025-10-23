@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,75 +100,19 @@ class MPMCQueueBase;
 template <
     typename T,
     template <typename> class Atom = std::atomic,
-    bool Dynamic = false,
-    class Allocator = std::allocator<T>>
-class MPMCQueue
-    : public detail::MPMCQueueBase<MPMCQueue<T, Atom, Dynamic, Allocator>>,
-      std::allocator_traits<Allocator>::template rebind_alloc<
-          detail::SingleElementQueue<T, Atom>> {
+    bool Dynamic = false>
+class MPMCQueue : public detail::MPMCQueueBase<MPMCQueue<T, Atom, Dynamic>> {
   friend class detail::MPMCPipelineStageImpl<T>;
-  using Base = detail::MPMCQueueBase<MPMCQueue<T, Atom, Dynamic, Allocator>>;
   using Slot = detail::SingleElementQueue<T, Atom>;
-  using SlotAllocator =
-      typename std::allocator_traits<Allocator>::template rebind_alloc<Slot>;
-  using SlotAllocatorTraits = std::allocator_traits<SlotAllocator>;
 
  public:
-  using typename Base::value_type;
-
-  explicit MPMCQueue(size_t queueCapacity) : Base(queueCapacity) {
-    initQueue(queueCapacity);
-  }
-
-  MPMCQueue(size_t queueCapacity, const SlotAllocator& alloc)
-      : Base(queueCapacity), SlotAllocator(alloc) {
-    initQueue(queueCapacity);
-  }
-
-  MPMCQueue() noexcept = default;
-  MPMCQueue(MPMCQueue&&) noexcept = default;
-  /// IMPORTANT: The move operator is here to make it easier to perform
-  /// the initialization phase, it is not safe to use when there are any
-  /// concurrent accesses (this is not checked).
-  MPMCQueue const& operator=(MPMCQueue&& rhs) {
-    if (this != &rhs) {
-      this->~MPMCQueue();
-      new (this) MPMCQueue(std::move(rhs));
-    }
-    return *this;
-  }
-  ~MPMCQueue() {
-    if (kUsingStdAllocator) {
-      delete[] this->slots_;
-      this->slots_ = nullptr;
-    } else {
-      if (this->slots_) {
-        size_t count = this->capacity_ + 2 * this->kSlotPadding;
-        for (size_t i = 0; i < count; ++i) {
-          SlotAllocatorTraits::destroy(*this, this->slots_ + i);
-        }
-        SlotAllocatorTraits::deallocate(*this, this->slots_, count);
-        this->slots_ = nullptr;
-      }
-    }
-  }
-
- private:
-  static constexpr bool kUsingStdAllocator =
-      is_instantiation_of_v<std::allocator, Allocator>;
-
-  void initQueue(size_t queueCapacity) {
+  explicit MPMCQueue(size_t queueCapacity)
+      : detail::MPMCQueueBase<MPMCQueue<T, Atom, Dynamic>>(queueCapacity) {
     this->stride_ = this->computeStride(queueCapacity);
-    size_t count = queueCapacity + 2 * this->kSlotPadding;
-    if (kUsingStdAllocator) {
-      this->slots_ = new Slot[count];
-    } else {
-      this->slots_ = SlotAllocatorTraits::allocate(*this, count);
-      for (size_t i = 0; i < count; ++i) {
-        SlotAllocatorTraits::construct(*this, this->slots_ + i);
-      }
-    }
+    this->slots_ = new Slot[queueCapacity + 2 * this->kSlotPadding];
   }
+
+  MPMCQueue() noexcept {}
 };
 
 /// *** The dynamic version of MPMCQueue is deprecated. ***
@@ -228,16 +172,13 @@ class MPMCQueue
 /// be subject to such condition per expansion.
 ///
 /// The dynamic version is a partial specialization of MPMCQueue with
-/// Dynamic == true.
-template <typename T, template <typename> class Atom, class Allocator>
-class MPMCQueue<T, Atom, true, Allocator>
-    : public detail::MPMCQueueBase<MPMCQueue<T, Atom, true, Allocator>> {
-  static_assert(
-      is_instantiation_of_v<std::allocator, Allocator>,
-      "The dynamic version of MPMCQueue does not support custom allocators");
-  friend class detail::MPMCQueueBase<MPMCQueue<T, Atom, true, Allocator>>;
+/// Dynamic == true
+template <typename T, template <typename> class Atom>
+class MPMCQueue<T, Atom, true>
+    : public detail::MPMCQueueBase<MPMCQueue<T, Atom, true>> {
+  friend class detail::MPMCQueueBase<MPMCQueue<T, Atom, true>>;
   using Slot = detail::SingleElementQueue<T, Atom>;
-  using Base = detail::MPMCQueueBase<MPMCQueue<T, Atom, true, Allocator>>;
+
   struct ClosedArray {
     uint64_t offset_{0};
     Slot* slots_{nullptr};
@@ -246,14 +187,15 @@ class MPMCQueue<T, Atom, true, Allocator>
   };
 
  public:
-  explicit MPMCQueue(size_t queueCapacity) : Base(queueCapacity) {
+  explicit MPMCQueue(size_t queueCapacity)
+      : detail::MPMCQueueBase<MPMCQueue<T, Atom, true>>(queueCapacity) {
     size_t cap = std::min<size_t>(kDefaultMinDynamicCapacity, queueCapacity);
     initQueue(cap, kDefaultExpansionMultiplier);
   }
 
   explicit MPMCQueue(
       size_t queueCapacity, size_t minCapacity, size_t expansionMultiplier)
-      : Base(queueCapacity) {
+      : detail::MPMCQueueBase<MPMCQueue<T, Atom, true>>(queueCapacity) {
     minCapacity = std::max<size_t>(1, minCapacity);
     size_t cap = std::min<size_t>(minCapacity, queueCapacity);
     expansionMultiplier = std::max<size_t>(2, expansionMultiplier);
@@ -304,9 +246,6 @@ class MPMCQueue<T, Atom, true, Allocator>
     rhs.closed_ = nullptr;
   }
 
-  /// IMPORTANT: The move operator is here to make it easier to perform
-  /// the initialization phase, it is not safe to use when there are any
-  /// concurrent accesses (this is not checked).
   MPMCQueue<T, Atom, true> const& operator=(MPMCQueue<T, Atom, true>&& rhs) {
     if (this != &rhs) {
       this->~MPMCQueue();
@@ -583,7 +522,7 @@ class MPMCQueue<T, Atom, true, Allocator>
   }
 
   /// Try to expand the queue. Returns true if this expansion was
-  /// successful or a concurrent expansion is in progress. Returns
+  /// successful or a concurent expansion is in progress. Returns
   /// false if the queue has reached its maximum capacity or
   /// allocation has failed.
   bool tryExpand(const uint64_t state, const size_t cap) noexcept {
@@ -624,7 +563,7 @@ class MPMCQueue<T, Atom, true, Allocator>
       this->dstate_.store((ticket << kSeqlockBits) + (2 * (index + 1)));
       return true;
     } else { // failed to acquire seqlock
-      // Someone acquired the seqlock. Go back to the caller and get
+      // Someone acaquired the seqlock. Go back to the caller and get
       // up-to-date info.
       return true;
     }
@@ -680,25 +619,17 @@ namespace detail {
 
 /// CRTP specialization of MPMCQueueBase
 template <
-    template <
-        typename T,
-        template <typename>
-        class Atom,
-        bool Dynamic,
-        class Allocator>
-
+    template <typename T, template <typename> class Atom, bool Dynamic>
     class Derived,
     typename T,
     template <typename>
     class Atom,
-    bool Dynamic,
-    class Allocator>
-class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
+    bool Dynamic>
+class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   // Note: Using CRTP static casts in several functions of this base
   // template instead of making called functions virtual or duplicating
   // the code of calling functions in the derived partially specialized
   // template
-  using DerivedType = Derived<T, Atom, Dynamic, Allocator>;
 
   static_assert(
       std::is_nothrow_constructible<T, T&&>::value ||
@@ -750,7 +681,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
   /// IMPORTANT: The move constructor is here to make it easier to perform
   /// the initialization phase, it is not safe to use when there are any
   /// concurrent accesses (this is not checked).
-  MPMCQueueBase(MPMCQueueBase<DerivedType>&& rhs) noexcept
+  MPMCQueueBase(MPMCQueueBase<Derived<T, Atom, Dynamic>>&& rhs) noexcept
       : capacity_(rhs.capacity_),
         slots_(rhs.slots_),
         stride_(rhs.stride_),
@@ -775,7 +706,18 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
     rhs.popSpinCutoff_.store(0, std::memory_order_relaxed);
   }
 
-  MPMCQueueBase& operator=(MPMCQueueBase&& rhs) = delete;
+  /// IMPORTANT: The move operator is here to make it easier to perform
+  /// the initialization phase, it is not safe to use when there are any
+  /// concurrent accesses (this is not checked).
+  MPMCQueueBase<Derived<T, Atom, Dynamic>> const& operator=(
+      MPMCQueueBase<Derived<T, Atom, Dynamic>>&& rhs) {
+    if (this != &rhs) {
+      this->~MPMCQueueBase();
+      new (this) MPMCQueueBase(std::move(rhs));
+    }
+    return *this;
+  }
+
   MPMCQueueBase(const MPMCQueueBase&) = delete;
   MPMCQueueBase& operator=(const MPMCQueueBase&) = delete;
 
@@ -885,8 +827,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
     Slot* slots;
     size_t cap;
     int stride;
-    if (static_cast<DerivedType*>(this)->tryObtainReadyPushTicket(
-
+    if (static_cast<Derived<T, Atom, Dynamic>*>(this)->tryObtainReadyPushTicket(
             ticket, slots, cap, stride)) {
       // we have pre-validated that the ticket won't block
       enqueueWithTicketBase(
@@ -935,8 +876,8 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
     Slot* slots;
     size_t cap;
     int stride;
-    if (static_cast<DerivedType*>(this)->tryObtainPromisedPushTicket(
-            ticket, slots, cap, stride)) {
+    if (static_cast<Derived<T, Atom, Dynamic>*>(this)
+            ->tryObtainPromisedPushTicket(ticket, slots, cap, stride)) {
       // some other thread is already dequeuing the slot into which we
       // are going to enqueue, but we might have to wait for them to finish
       enqueueWithTicketBase(
@@ -951,7 +892,8 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
   /// is available
   void blockingRead(T& elem) noexcept {
     uint64_t ticket;
-    static_cast<DerivedType*>(this)->blockingReadWithTicket(ticket, elem);
+    static_cast<Derived<T, Atom, Dynamic>*>(this)->blockingReadWithTicket(
+        ticket, elem);
   }
 
   /// Same as blockingRead() but also records the ticket nunmer
@@ -961,15 +903,8 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
     dequeueWithTicketBase(ticket, slots_, capacity_, stride_, elem);
   }
 
-  /// If an item can be dequeued with no blocking, does so and returns true,
-  /// otherwise returns false.
-  ///
-  /// Note that if the matching write is still in progress, this may return
-  /// false even if writes that have been started later have already
-  /// completed. If an external mechanism is used for counting completed writes
-  /// (for example a semaphore) to determine when an element is ready to
-  /// dequeue, readIfNotEmpty() should be used instead, which will wait for the
-  /// write in progress.
+  /// If an item can be dequeued with no blocking, does so and returns
+  /// true, otherwise returns false.
   bool read(T& elem) noexcept {
     uint64_t ticket;
     return readAndGetTicket(ticket, elem);
@@ -980,8 +915,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
     Slot* slots;
     size_t cap;
     int stride;
-    if (static_cast<DerivedType*>(this)->tryObtainReadyPopTicket(
-
+    if (static_cast<Derived<T, Atom, Dynamic>*>(this)->tryObtainReadyPopTicket(
             ticket, slots, cap, stride)) {
       // the ticket has been pre-validated to not block
       dequeueWithTicketBase(ticket, slots, cap, stride, elem);
@@ -1019,8 +953,8 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
     Slot* slots;
     size_t cap;
     int stride;
-    if (static_cast<DerivedType*>(this)->tryObtainPromisedPopTicket(
-            ticket, slots, cap, stride)) {
+    if (static_cast<Derived<T, Atom, Dynamic>*>(this)
+            ->tryObtainPromisedPopTicket(ticket, slots, cap, stride)) {
       // the matching enqueue already has a ticket, but might not be done
       dequeueWithTicketBase(ticket, slots, cap, stride, elem);
       return true;
@@ -1065,7 +999,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
     Atom<int> dstride_;
   };
 
-  /// The following two members are used by dynamic MPMCQueue.
+  /// The following two memebers are used by dynamic MPMCQueue.
   /// Ideally they should be in MPMCQueue<T,Atom,true>, but we get
   /// better cache locality if they are in the same cache line as
   /// dslots_ and dstride_.
@@ -1191,8 +1125,8 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
       const std::chrono::time_point<Clock>& when) noexcept {
     bool deadlineReached = false;
     while (!deadlineReached) {
-      if (static_cast<DerivedType*>(this)->tryObtainPromisedPushTicket(
-              ticket, slots, cap, stride)) {
+      if (static_cast<Derived<T, Atom, Dynamic>*>(this)
+              ->tryObtainPromisedPushTicket(ticket, slots, cap, stride)) {
         return true;
       }
       // ticket is a blocking ticket until the preceding ticket has been
@@ -1274,8 +1208,8 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic, Allocator>> {
       const std::chrono::time_point<Clock>& when) noexcept {
     bool deadlineReached = false;
     while (!deadlineReached) {
-      if (static_cast<DerivedType*>(this)->tryObtainPromisedPopTicket(
-              ticket, slots, cap, stride)) {
+      if (static_cast<Derived<T, Atom, Dynamic>*>(this)
+              ->tryObtainPromisedPopTicket(ticket, slots, cap, stride)) {
         return true;
       }
       // ticket is a blocking ticket until the preceding ticket has been

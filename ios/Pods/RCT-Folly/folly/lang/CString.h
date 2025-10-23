@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,6 @@
 
 #include <cstddef>
 #include <cstring>
-
-#include <folly/CPortability.h>
-
-#if FOLLY_HAS_BUILTIN(__builtin_memcpy_inline)
-#define FOLLY_BUILTIN_MEMCPY(dest, src, size) \
-  void(__builtin_memcpy_inline((dest), (src), (size)))
-#elif FOLLY_HAS_BUILTIN(__builtin_memcpy)
-#define FOLLY_BUILTIN_MEMCPY(dest, src, size) \
-  void(__builtin_memcpy((dest), (src), (size)))
-#else
-#define FOLLY_BUILTIN_MEMCPY(dest, src, size) \
-  void(::std::memcpy((dest), (src), (size)))
-#endif
 
 namespace folly {
 

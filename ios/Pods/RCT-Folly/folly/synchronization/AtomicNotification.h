@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Meta Platforms, Inc. and affiliates.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@
 
 #include <atomic>
 #include <condition_variable>
-
-#include <folly/Portability.h>
 
 namespace folly {
 
@@ -58,7 +56,7 @@ struct atomic_wait_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-inline constexpr auto atomic_wait =
+constexpr inline auto atomic_wait =
     detail::atomic_notification::atomic_wait_fn{};
 
 //  mimic: std::atomic_wait_until, p1135r0
@@ -76,7 +74,7 @@ struct atomic_wait_until_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-inline constexpr auto atomic_wait_until =
+constexpr inline auto atomic_wait_until =
     detail::atomic_notification::atomic_wait_until_fn{};
 
 //  mimic: std::atomic_notify_one, p1135r0
@@ -91,7 +89,7 @@ struct atomic_notify_one_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-inline constexpr auto atomic_notify_one =
+constexpr inline auto atomic_notify_one =
     detail::atomic_notification::atomic_notify_one_fn{};
 
 //  mimic: std::atomic_notify_all, p1135r0
@@ -106,7 +104,7 @@ struct atomic_notify_all_fn {
 };
 } // namespace atomic_notification
 } // namespace detail
-inline constexpr auto atomic_notify_all =
+constexpr inline auto atomic_notify_all =
     detail::atomic_notification::atomic_notify_all_fn{};
 
 //  mimic: std::atomic_uint_fast_wait_t, p1135r0

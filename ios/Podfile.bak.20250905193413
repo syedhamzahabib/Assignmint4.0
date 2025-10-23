@@ -1,0 +1,23 @@
+platform :ios, '15.1'
+
+require_relative '../node_modules/react-native/scripts/react_native_pods'
+
+target 'Assignmint' do
+  config = use_native_modules!
+
+    :path => config[:reactNativePath],
+    :hermes_enabled => true,
+  )
+
+  # Temporarily disable Flipper to reduce header/link issues
+  # use_flipper!()
+
+  post_install do |installer|
+    react_native_post_install(installer)
+    installer.pods_project.targets.each do |t|
+      t.build_configurations.each do |cfg|
+        cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+      end
+    end
+  end
+end
